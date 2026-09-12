@@ -1,0 +1,268 @@
+version: '3.8'
+
+services:
+  # 1. Redis Message Broker, Event Bus & Distributed Cache
+  redis:
+    image: redis:7-alpine
+    container_name: clinic_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 2. PostgreSQL 16 Relational Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: clinic_postgres
+    environment:
+      POSTGRES_USER: clinic_admin
+      POSTGRES_PASSWORD: clinic_secure_password
+      POSTGRES_DB: clinic_master
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinic_admin -d clinic_master"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 3. NestJS API Gateway (REST, Swagger, JWT Guard, Redis ClientProxy)
+  api-gateway:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_api_gateway
+    command: ["npm", "run", "start:prod:api-gateway"]
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+      - JWT_SECRET=clinic_jwt_super_secret_key_change_in_prod
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 4. Auth & Account Microservice
+  auth-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_auth_service
+    command: ["npm", "run", "start:prod:auth-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+      - JWT_SECRET=clinic_jwt_super_secret_key_change_in_prod
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 5. Patient Microservice
+  patient-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_patient_service
+    command: ["npm", "run", "start:prod:patient-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 6. Staff Microservice
+  staff-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_staff_service
+    command: ["npm", "run", "start:prod:staff-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 7. Appointment Microservice (60-min Conflict Detection & Redis Lock)
+  appointment-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_appointment_service
+    command: ["npm", "run", "start:prod:appointment-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 8. Medical Record Microservice (EMR)
+  medical-record-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_medical_record_service
+    command: ["npm", "run", "start:prod:medical-record-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 9. Pharmacy Microservice (Prescriptions & Atomic Stock Deduction)
+  pharmacy-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_pharmacy_service
+    command: ["npm", "run", "start:prod:pharmacy-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 10. Billing Microservice (Auto Calculation & Event Bus)
+  billing-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_billing_service
+    command: ["npm", "run", "start:prod:billing-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 11. Analytics Microservice (BI Dashboard & Active Invalidation)
+  analytics-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_analytics_service
+    command: ["npm", "run", "start:prod:analytics-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 12. Statistical Microservice (Moving Avg, Linear Regression, Anomaly Detection)
+  statistical-service:
+    build:
+      context: ./backend-nestjs
+      dockerfile: Dockerfile
+    container_name: clinic_statistical_service
+    command: ["npm", "run", "start:prod:statistical-service"]
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clinic_admin
+      - DB_PASSWORD=clinic_secure_password
+      - DB_NAME=clinic_master
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # 13. React Frontend SPA
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: clinic_frontend
+    ports:
+      - "5173:80"
+    restart: always
+    depends_on:
+      - api-gateway
+
+volumes:
+  redis_data:
+  postgres_data:

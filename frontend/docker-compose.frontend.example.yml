@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: clinic_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api_gateway
+    networks:
+      - microservice_network

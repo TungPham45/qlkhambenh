@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "data": {
+    "summary": {
+      "total_patients": 120,
+      "appointments_today": 14,
+      "revenue_today": 4500000,
+      "monthly_revenue": 98000000,
+      "active_doctors": 8
+    },
+    "widgets": {
+      "top_medicines": [
+        { "label": "Paracetamol", "value": 50 },
+        { "label": "Vitamin C", "value": 31 }
+      ],
+      "appointment_trends": [
+        { "label": "2026-05-01", "value": 12, "metric": "appointments" },
+        { "label": "2026-05-02", "value": 18, "metric": "appointments" }
+      ],
+      "patient_growth": [
+        { "label": "2026-05-01", "value": 3, "metric": "patients" },
+        { "label": "2026-05-02", "value": 5, "metric": "patients" }
+      ]
+    }
+  },
+  "message": "Dashboard analytics retrieved",
+  "errors": []
+}

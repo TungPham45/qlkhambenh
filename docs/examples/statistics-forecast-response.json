@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "revenue_prediction": [
+      { "label": "2026-05-10", "value": 4100000 },
+      { "label": "2026-05-11", "value": 4250000 }
+    ],
+    "appointment_forecast": [
+      { "label": "2026-05-10", "value": 16 },
+      { "label": "2026-05-11", "value": 17 }
+    ],
+    "method": "simple linear regression over daily service API aggregates"
+  },
+  "message": "Forecast retrieved",
+  "errors": []
+}
