@@ -1,117 +1,56 @@
 # 🏥 HỆ THỐNG QUẢN LÝ PHÒNG KHÁM ĐA KHOA (CLINIC MANAGEMENT SYSTEM)
 
-Hệ thống quản lý phòng khám hiện đại được xây dựng theo kiến trúc **Microservices chuẩn Enterprise**:
+Hệ thống quản lý phòng khám hiện đại chuẩn **Enterprise Microservices Architecture**:
 - **Frontend**: React 18 + Vite + Tailwind CSS + Lucide Icons + Axios (Single Page Application)
 - **Backend**: NestJS Monorepo Microservices (10 Services độc lập)
-- **Message Broker / Transport**: Redis Microservice Transporter (Pub/Sub & Request-Response)
+- **Message Broker / Transport**: Redis Microservices Transporter (Pub/Sub & Request-Response)
 - **Database / ORM**: PostgreSQL 16 + TypeORM
-- **Triển khai**: Docker & Docker Compose
+- **Triển khai**: Docker & Docker Compose (13 Containers)
 
 ---
 
-## 📋 Yêu Cầu Cài Đặt Trước (Prerequisites)
+## ⚡ KHỞI ĐỘNG SIÊU TỐC (QUICK START - 1 CLICK)
 
-Trước khi bắt đầu, máy tính của bạn cần cài đặt:
-1. **Git**: Để clone mã nguồn.
-2. **Docker & Docker Desktop** *(Khuyến nghị - cách nhanh và chuẩn nhất)*: [Tải tại đây](https://www.docker.com/products/docker-desktop/)
-3. **Node.js**: Phiên bản `v18.x` hoặc `v20.x` *(Chỉ cần nếu muốn chạy trực tiếp không qua Docker)*: [Tải tại đây](https://nodejs.org/)
+Chỉ cần clone dự án về và làm theo 1 trong các cách dưới đây:
+
+### 🌟 Cách A: Dành cho Windows (Tiện nhất - Chỉ 1 Click đúp chuột)
+1. **Mở Docker Desktop**.
+2. Click đúp chuột vào file **`start.bat`** trong thư mục dự án.
+   *(Script sẽ tự động tạo file `.env`, build 13 containers và tự mở trình duyệt tới Web App!)*
+3. Để tắt hệ thống: Click đúp vào file **`stop.bat`**.
 
 ---
 
-## 🚀 CÁCH 1: KHỞI ĐỘNG NHANH BẰNG DOCKER (KHUYẾN NGHỊ ⭐⭐⭐)
-
-Đây là cách đơn giản nhất dành cho người mới clone repo về máy. Toàn bộ cơ sở dữ liệu PostgreSQL, Redis cache, 10 Backend Microservices và Frontend React sẽ tự động cài đặt và chạy chỉ với 1 câu lệnh.
-
-### Bước 1: Clone dự án về máy
+### 🚀 Cách B: Dành cho Terminal / Command Line (Khuyến nghị)
+Sau khi clone repo về máy:
 ```bash
-git clone <URL_REPO_CUA_BAN>
-cd qlphongkham_build
-```
-
-### Bước 2: Tạo file cấu hình môi trường `.env`
-Sao chép file `.env.example` thành `.env`:
-- **Trên Windows PowerShell**:
-  ```powershell
-  Copy-Item .env.example .env
-  ```
-- **Trên Linux / MacOS**:
-  ```bash
-  cp .env.example .env
-  ```
-
-*(File `.env.example` đã được cấu hình sẵn các thông số mặc định tương thích 100% với Docker Compose, bạn không cần phải sửa gì thêm nếu chạy mặc định).*
-
-### Bước 3: Build và khởi động toàn bộ hệ thống
-```bash
+# 1. Chạy toàn bộ hệ thống bằng Docker Compose:
 docker-compose up -d --build
-```
-> ⏳ **Lưu ý**: Lần đầu tiên chạy sẽ mất khoảng 2 - 5 phút để Docker tải image và build các container.
 
-### Bước 4: Kiểm tra trạng thái các container
-```bash
-docker-compose ps
+# Hoặc dùng lệnh npm ngắn gọn:
+npm run start:build
 ```
-Khi thấy tất cả 13 containers đều ở trạng thái `running` / `Up` là hệ thống đã sẵn sàng!
+> ⏳ **Lưu ý**: Lần đầu tiên chạy sẽ mất khoảng 1 - 3 phút để tải image và build các service. Các lần sau chỉ mất vài giây.
 
 ---
 
-## 💻 CÁCH 2: CHẠY THỦ CÔNG ĐỂ PHÁT TRIỂN (LOCAL DEVELOPMENT)
-
-Nếu bạn là lập trình viên muốn chỉnh sửa code và xem thay đổi ngay (Hot Reload):
-
-### 1. Khởi động PostgreSQL & Redis bằng Docker trước
+### 🐧 Cách C: Dành cho Linux / macOS
 ```bash
-docker-compose up -d postgres redis
-```
-
-### 2. Cài đặt và khởi chạy Backend (NestJS Monorepo)
-```bash
-# Di chuyển vào thư mục backend
-cd backend-nestjs
-
-# Cài đặt toàn bộ dependencies
-npm install
-
-# Khởi chạy API Gateway và các Microservices cần thiết:
-npm run start:dev api-gateway
-```
-*(Để chạy các microservice khác trong cửa sổ terminal riêng:)*
-```bash
-npm run start:dev auth-service
-npm run start:dev patient-service
-npm run start:dev appointment-service
-npm run start:dev medical-record-service
-npm run start:dev pharmacy-service
-npm run start:dev billing-service
-npm run start:dev staff-service
-npm run start:dev statistical-service
-npm run start:dev analytics-service
-```
-
-### 3. Cài đặt và khởi chạy Frontend (React + Vite)
-Mở một cửa sổ Terminal mới:
-```bash
-# Di chuyển vào thư mục frontend
-cd frontend
-
-# Cài đặt dependencies
-npm install
-
-# Khởi chạy giao diện ở chế độ Development
-npm run dev
+chmod +x start.sh stop.sh
+./start.sh
 ```
 
 ---
 
-## 🌐 ĐỊA CHỈ TRUY CẬP VÀ DANH MỤC CỔNG (PORTS)
+## 🌐 ĐỊA CHỈ TRUY CẬP HỆ THỐNG
 
-| Dịch vụ | Địa chỉ URL / Port | Mô tả |
+| Dịch vụ | Địa chỉ URL | Ghi chú |
 |---|---|---|
-| **Frontend Web App** | [http://localhost:3000](http://localhost:3000) | Giao diện quản lý phòng khám React |
-| **API Gateway (REST API)** | [http://localhost:3001](http://localhost:3001) | Cổng API backend công khai |
-| **Kiểm tra sức khỏe API** | [http://localhost:3001/api/health](http://localhost:3001/api/health) | Healthcheck endpoint |
-| **PostgreSQL Database** | `localhost:5432` | DB: `qlphongkham`, User: `postgres`, Pass: `postgres` |
-| **Redis Broker** | `localhost:6379` | Message broker & cache |
+| **Frontend Web App** | **[http://localhost:3000](http://localhost:3000)** | Giao diện quản lý phòng khám React SPA |
+| **API Gateway (Swagger Docs)** | **[http://localhost:3001/api/docs](http://localhost:3001/api/docs)** | Tài liệu OpenAPI / REST API tương tác |
+| **Kiểm tra API Health** | [http://localhost:3001/api/health](http://localhost:3001/api/health) | Trạng thái API Gateway |
+| **PostgreSQL Database** | `localhost:5432` | DB: `clinic_master`, User: `clinic_admin`, Pass: `clinic_secure_password` |
+| **Redis Message Broker** | `localhost:6379` | Broker trao đổi tin nhắn microservices |
 
 ---
 
@@ -119,51 +58,56 @@ npm run dev
 
 Hệ thống đã có sẵn dữ liệu và tài khoản mẫu cho từng phân quyền:
 
-| Vai trò | Tên đăng nhập | Mật khẩu | Chức năng chính |
+| Phân quyền / Vai trò | Tên đăng nhập | Mật khẩu | Chức năng nghiệp vụ |
 |---|---|---|---|
-| **Quản trị viên (Admin)** | `admin` | `123456` | Toàn quyền quản trị hệ thống, nhân sự, cấu hình |
-| **Bác sĩ (Doctor)** | `doctor1` | `123456` | Khám bệnh, chẩn đoán, kê đơn thuốc, xem hồ sơ bệnh án |
-| **Tiếp tân (Receptionist)** | `reception1` | `123456` | Tiếp đón bệnh nhân, đặt lịch khám, phân phòng |
-| **Dược sĩ (Pharmacist)** | `pharmacist1` | `123456` | Quản lý kho thuốc, cấp phát thuốc theo đơn |
-| **Thu ngân (Cashier)** | `cashier1` | `123456` | Thu viện phí, xuất hóa đơn thanh toán |
+| **Quản trị viên (Admin)** | `admin` | `123456` | Toàn quyền quản trị hệ thống, nhân sự, tài chính |
+| **Bác sĩ (Doctor)** | `doctor1` | `123456` | Khám bệnh, chẩn đoán ICD-10, kê đơn thuốc, xem hồ sơ |
+| **Tiếp tân (Receptionist)** | `reception1` | `123456` | Tiếp đón, tạo hồ sơ bệnh nhân, đặt lịch khám |
+| **Dược sĩ (Pharmacist)** | `pharmacist1` | `123456` | Quản lý kho dược, xuất/nhập thuốc, phát thuốc theo đơn |
+| **Thu ngân (Cashier)** | `cashier1` | `123456` | Tính viện phí, xuất hóa đơn thanh toán |
 
 ---
 
-## 🛠️ CÁC LỆNH HỮU ÍCH KHI QUẢN LÝ DỰ ÁN
+## 💻 DÀNH CHO LẬP TRÌNH VIÊN PHÁT TRIỂN (LOCAL DEV)
 
-### 1. Xem nhật ký log của hệ thống
-- Xem log toàn bộ hệ thống:
-  ```bash
-  docker-compose logs -f
-  ```
-- Xem log riêng của 1 service (ví dụ `api-gateway` hoặc `auth-service`):
-  ```bash
-  docker-compose logs -f api-gateway
-  docker-compose logs -f auth-service
-  ```
+Nếu bạn muốn can thiệp code và chạy chế độ Hot-Reload không qua Docker:
 
-### 2. Dừng hệ thống
+### 1. Bật Database PostgreSQL & Redis
 ```bash
-docker-compose down
+docker-compose up -d postgres redis
 ```
 
-### 3. Dừng hệ thống và XÓA SẠCH dữ liệu database (Reset từ đầu)
+### 2. Cài đặt toàn bộ dependencies
 ```bash
-docker-compose down -v
+npm run install:all
 ```
 
-### 4. Build lại hệ thống khi có cập nhật code mới
+### 3. Khởi chạy Backend (NestJS Monorepo)
 ```bash
-docker-compose up -d --build
+cd backend-nestjs
+npm run start:dev api-gateway
+# Khởi chạy các service khác nếu cần:
+npm run start:dev auth-service
+npm run start:dev patient-service
+# ...
+```
+
+### 4. Khởi chạy Frontend (React + Vite)
+```bash
+cd frontend
+npm run dev
 ```
 
 ---
 
-## ❓ XỬ LÝ SỰ CỐ THƯỜNG GẶP (TROUBLESHOOTING)
+## 🛠️ CÁC LỆNH HỮU ÍCH
 
-1. **Lỗi `Port 5432 or 3000 is already in use`**:
-   - Kiểm tra xem máy bạn có đang chạy PostgreSQL cục bộ hoặc dịch vụ nào khác chiếm cổng hay không. Hãy tắt dịch vụ đó hoặc đổi cổng trong file `.env`.
-2. **Lỗi không kết nối được Database**:
-   - Chạy lệnh `docker-compose restart api-gateway` sau khi PostgreSQL container đã chuyển sang trạng thái sẵn sàng.
-3. **Frontend không gọi được API**:
-   - Đảm bảo `API Gateway` đang chạy tại port `3001` và file `.env` của frontend có `VITE_API_BASE_URL=http://localhost:3001/api`.
+| Thao tác | Lệnh ngắn (NPM) | Lệnh Docker Compose tương đương |
+|---|---|---|
+| **Khởi động** | `npm start` | `docker-compose up -d` |
+| **Khởi động & Build lại** | `npm run start:build` | `docker-compose up -d --build` |
+| **Dừng hệ thống** | `npm stop` | `docker-compose down` |
+| **Khởi động lại** | `npm run restart` | `docker-compose restart` |
+| **Xem Logs trực tiếp** | `npm run logs` | `docker-compose logs -f` |
+| **Xem trạng thái container** | `npm run ps` | `docker-compose ps` |
+| **Reset toàn bộ database** | `npm run clean` | `docker-compose down -v` |

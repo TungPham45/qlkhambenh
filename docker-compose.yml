@@ -44,7 +44,7 @@ services:
     container_name: clinic_api_gateway
     command: ["npm", "run", "start:prod:api-gateway"]
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - PORT=3000
       - REDIS_HOST=redis
@@ -258,7 +258,7 @@ services:
       dockerfile: Dockerfile
     container_name: clinic_frontend
     ports:
-      - "5173:80"
+      - "3000:80"
     restart: always
     depends_on:
       - api-gateway
