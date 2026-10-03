@@ -9,12 +9,15 @@ import {
   Account,
   Staff,
   Patient,
+  MedicalHistory,
+  Manager,
 } from '@app/database';
 import {
   LoginDto,
   RegisterDto,
   CreateAccountDto,
   UpdateAccountDto,
+  UpdateProfileDto,
   UserRole,
   AccountStatus,
   Gender,
@@ -33,6 +36,10 @@ export class AuthServiceService {
     private readonly staffRepo: Repository<Staff>,
     @InjectRepository(Patient)
     private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(MedicalHistory)
+    private readonly medicalHistoryRepo: Repository<MedicalHistory>,
+    @InjectRepository(Manager)
+    private readonly managerRepo: Repository<Manager>,
     private readonly jwtService: JwtService,
     @Inject(REDIS_SERVICES.PATIENT_SERVICE)
     private readonly patientClient: ClientProxy,
@@ -48,7 +55,7 @@ export class AuthServiceService {
 
     const account = await this.accountRepo.findOne({
       where: { username },
-      relations: ['staff', 'patient'],
+      relations: ['manager', 'staff', 'patient'],
     });
 
     if (!account) {
@@ -85,8 +92,16 @@ export class AuthServiceService {
         TrangThai: account.status,
         MaBN: account.patientId || account.patient?.id,
         MaNV: account.staffId || account.staff?.id,
-        fullName: account.staff?.fullName || account.patient?.fullName || account.username,
-        HoTen: account.staff?.fullName || account.patient?.fullName || account.username,
+        fullName:
+          account.manager?.fullName ||
+          account.staff?.fullName ||
+          account.patient?.fullName ||
+          account.username,
+        HoTen:
+          account.manager?.fullName ||
+          account.staff?.fullName ||
+          account.patient?.fullName ||
+          account.username,
       },
     };
   }
@@ -120,10 +135,17 @@ export class AuthServiceService {
       dateOfBirth,
       gender,
       address,
-      medicalHistory,
       username,
     });
     const savedPatient = await this.patientRepo.save(patient);
+
+    if (medicalHistory?.trim()) {
+      await this.medicalHistoryRepo.save({
+        patientId: savedPatient.id,
+        type: 'Khác',
+        description: medicalHistory.trim(),
+      });
+    }
 
     // 2. Tạo Tài khoản liên kết
     const account = this.accountRepo.create({
@@ -152,12 +174,72 @@ export class AuthServiceService {
     };
   }
 
+  async updateProfile(user: any, dto: UpdateProfileDto) {
+    const account = await this.accountRepo.findOne({
+      where: { id: user?.sub },
+      relations: ['manager', 'staff', 'patient'],
+    });
+
+    if (!account) throw new NotFoundException('Không tìm thấy tài khoản');
+
+    const target = account.patient || account.staff || account.manager;
+    const profileTarget: any = target;
+    if (target) {
+      Object.assign(target, {
+        ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
+        ...(dto.dateOfBirth !== undefined ? { dateOfBirth: dto.dateOfBirth } : {}),
+        ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone.trim() } : {}),
+        ...(dto.address !== undefined ? { address: dto.address.trim() } : {}),
+      });
+
+      if (account.patient) {
+        await this.patientRepo.save(account.patient);
+      } else if (account.staff) {
+        await this.staffRepo.save(account.staff);
+      } else if (account.manager) {
+        await this.managerRepo.save(account.manager);
+      }
+    }
+
+    if (dto.password?.trim()) {
+      const salt = await bcrypt.genSalt(10);
+      account.passwordHash = await bcrypt.hash(dto.password.trim(), salt);
+      await this.accountRepo.save(account);
+    }
+
+    const fullName = profileTarget?.fullName || account.username;
+    return {
+      message: 'Cập nhật thông tin thành công',
+      user: {
+        id: account.id,
+        username: account.username,
+        role: account.role,
+        VaiTro: account.role,
+        status: account.status,
+        TrangThai: account.status,
+        MaBN: account.patientId || account.patient?.id,
+        MaNV: account.staffId || account.staff?.id,
+        fullName,
+        HoTen: fullName,
+        dateOfBirth: profileTarget?.dateOfBirth,
+        NgaySinh: profileTarget?.dateOfBirth,
+        gender: profileTarget?.gender,
+        GioiTinh: profileTarget?.gender,
+        phone: profileTarget?.phone,
+        SoDienThoai: profileTarget?.phone,
+        address: profileTarget?.address,
+        DiaChi: profileTarget?.address,
+      },
+    };
+  }
+
   async getAccounts(query: any) {
     const page = Math.max(1, parseInt(query.page) || 1);
     const limit = Math.max(1, parseInt(query.limit) || 50);
 
     const [rows, total] = await this.accountRepo.findAndCount({
-      relations: ['staff', 'patient'],
+      relations: ['manager', 'staff', 'patient'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -190,7 +272,7 @@ export class AuthServiceService {
   async getAccountByUsername(username: string) {
     const account = await this.accountRepo.findOne({
       where: { username },
-      relations: ['staff', 'patient'],
+      relations: ['manager', 'staff', 'patient'],
     });
     if (!account) throw new NotFoundException('Không tìm thấy tài khoản');
     return account;

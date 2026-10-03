@@ -14,34 +14,34 @@ import { Staff } from './staff.entity';
 import { Prescription } from './prescription.entity';
 import { Invoice } from './invoice.entity';
 
-@Entity('medical_records')
+@Entity('phieu_kham')
 export class MedicalRecord {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
 
-  @Column({ name: 'appointment_id', type: 'bigint', unique: true })
+  @Column({ name: 'lich_hen_id', type: 'bigint', unique: true })
   appointmentId: number;
 
-  @Column({ name: 'patient_id', type: 'bigint' })
+  @Column({ name: 'benh_nhan_id', type: 'bigint' })
   patientId: number;
 
-  @Column({ name: 'doctor_id', type: 'bigint' })
+  @Column({ name: 'bac_si_id', type: 'bigint' })
   doctorId: number;
 
-  @Column({ name: 'examination_date', type: 'date', default: () => 'CURRENT_DATE' })
+  @Column({ name: 'ngay_kham', type: 'date', default: () => 'CURRENT_DATE' })
   examinationDate: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'trieu_chung', type: 'text', nullable: true })
   symptoms: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'ket_qua_kham', type: 'text', nullable: true })
   diagnosis: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'ket_luan', type: 'text', nullable: true })
   conclusion: string;
 
   @Column({
-    name: 'examination_fee',
+    name: 'chi_phi_kham',
     type: 'numeric',
     precision: 12,
     scale: 2,
@@ -50,15 +50,15 @@ export class MedicalRecord {
   examinationFee: number;
 
   @OneToOne(() => Appointment, (appt) => appt.medicalRecord, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'appointment_id' })
+  @JoinColumn({ name: 'lich_hen_id' })
   appointment?: Appointment;
 
   @ManyToOne(() => Patient, (patient) => patient.medicalRecords)
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'benh_nhan_id' })
   patient?: Patient;
 
   @ManyToOne(() => Staff, (staff) => staff.medicalRecords)
-  @JoinColumn({ name: 'doctor_id' })
+  @JoinColumn({ name: 'bac_si_id' })
   doctor?: Staff;
 
   @OneToOne(() => Prescription, (p) => p.medicalRecord)
@@ -67,9 +67,9 @@ export class MedicalRecord {
   @OneToOne(() => Invoice, (inv) => inv.medicalRecord)
   invoice?: Invoice;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

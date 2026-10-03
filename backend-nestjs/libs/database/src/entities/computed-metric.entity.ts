@@ -5,17 +5,17 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
-@Entity('computed_metrics')
+@Entity('chi_so_thong_ke')
 export class ComputedMetric {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
 
-  @Column({ name: 'metric_type', length: 50 })
+  @Column({ name: 'loai_chi_so', length: 50 })
   metricType: string; // 'averages', 'distributions', 'trends', 'forecast', 'anomalies', 'timeseries'
 
-  @Column({ name: 'metric_payload', type: 'jsonb' })
+  @Column({ name: 'du_lieu_thong_ke', type: 'jsonb' })
   metricPayload: any;
 
-  @CreateDateColumn({ name: 'calculated_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'thoi_gian_tinh', type: 'timestamptz' })
   calculatedAt: Date;
 }

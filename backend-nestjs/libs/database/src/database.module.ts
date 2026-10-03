@@ -10,6 +10,22 @@ import { Prescription } from './entities/prescription.entity';
 import { PrescriptionItem } from './entities/prescription-item.entity';
 import { Invoice } from './entities/invoice.entity';
 import { ComputedMetric } from './entities/computed-metric.entity';
+import {
+  ActivityLog,
+  AppointmentHistory,
+  Diagnosis,
+  DiseaseCatalog,
+  DoctorSpecialty,
+  DrugInventoryTransaction,
+  DrugSuggestion,
+  Manager,
+  MedicalHistory,
+  Notification,
+  PatientReception,
+  Payment,
+  Specialty,
+  WorkSchedule,
+} from './entities/clinic-model.entity';
 
 export const ALL_ENTITIES = [
   Account,
@@ -22,6 +38,20 @@ export const ALL_ENTITIES = [
   PrescriptionItem,
   Invoice,
   ComputedMetric,
+  Manager,
+  Specialty,
+  DoctorSpecialty,
+  WorkSchedule,
+  AppointmentHistory,
+  PatientReception,
+  DiseaseCatalog,
+  Diagnosis,
+  MedicalHistory,
+  DrugSuggestion,
+  DrugInventoryTransaction,
+  Payment,
+  Notification,
+  ActivityLog,
 ];
 
 @Module({

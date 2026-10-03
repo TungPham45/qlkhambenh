@@ -57,7 +57,6 @@ echo.
 echo  🔐 TÀI KHOẢN MẪU:
 echo  - Quản trị viên: admin       / 123456
 echo  - Bác sĩ:        doctor1     / 123456
-echo  - Tiếp tân:      reception1  / 123456
 echo  - Dược sĩ:       pharmacist1 / 123456
 echo  - Thu ngân:      cashier1    / 123456
 echo ==============================================================================

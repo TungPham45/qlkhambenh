@@ -7,6 +7,7 @@ import {
   RegisterDto,
   CreateAccountDto,
   UpdateAccountDto,
+  UpdateProfileDto,
 } from '@app/common';
 
 @Controller()
@@ -21,6 +22,11 @@ export class AuthServiceController {
   @MessagePattern(MSG.AUTH_REGISTER)
   async register(@Payload() dto: RegisterDto) {
     return await this.authService.register(dto);
+  }
+
+  @MessagePattern(MSG.AUTH_UPDATE_PROFILE)
+  async updateProfile(@Payload() data: { user: any; dto: UpdateProfileDto }) {
+    return await this.authService.updateProfile(data.user, data.dto);
   }
 
   @MessagePattern(MSG.AUTH_GET_ACCOUNTS)

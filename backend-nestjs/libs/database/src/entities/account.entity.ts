@@ -10,19 +10,21 @@ import {
 import { UserRole, AccountStatus } from '@app/common';
 import { Staff } from './staff.entity';
 import { Patient } from './patient.entity';
+import { Manager } from './clinic-model.entity';
 
-@Entity('accounts')
+@Entity('tai_khoan')
 export class Account {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 50 })
+  @Column({ name: 'ten_dang_nhap', unique: true, length: 50 })
   username: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'mat_khau_ma_hoa' })
   passwordHash: string;
 
   @Column({
+    name: 'vai_tro',
     type: 'varchar',
     length: 30,
     default: UserRole.NGUOI_DUNG,
@@ -30,29 +32,37 @@ export class Account {
   role: UserRole;
 
   @Column({
+    name: 'trang_thai',
     type: 'varchar',
     length: 20,
     default: AccountStatus.ACTIVE,
   })
   status: AccountStatus;
 
-  @Column({ name: 'staff_id', nullable: true, type: 'bigint' })
+  @Column({ name: 'bac_si_id', nullable: true, type: 'bigint' })
   staffId: number;
 
-  @Column({ name: 'patient_id', nullable: true, type: 'bigint' })
+  @Column({ name: 'benh_nhan_id', nullable: true, type: 'bigint' })
   patientId: number;
 
+  @Column({ name: 'quan_ly_id', nullable: true, type: 'bigint' })
+  managerId: number;
+
   @OneToOne(() => Staff, (staff) => staff.account, { nullable: true })
-  @JoinColumn({ name: 'staff_id' })
+  @JoinColumn({ name: 'bac_si_id' })
   staff?: Staff;
 
   @OneToOne(() => Patient, (patient) => patient.account, { nullable: true })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'benh_nhan_id' })
   patient?: Patient;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @OneToOne(() => Manager, { nullable: true })
+  @JoinColumn({ name: 'quan_ly_id' })
+  manager?: Manager;
+
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

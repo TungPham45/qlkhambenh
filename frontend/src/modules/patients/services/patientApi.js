@@ -22,16 +22,29 @@ export async function listPatientsByDoctorIds(patientIds, params = {}) {
 }
 
 export async function createPatient(payload) {
-  const response = await httpClient.post(endpoints.patients, payload);
+  const response = await httpClient.post(endpoints.patients, toPatientPayload(payload));
   return unwrapData(response);
 }
 
 export async function updatePatient(id, payload) {
-  const response = await httpClient.put(`${endpoints.patients}/${id}`, payload);
+  const response = await httpClient.put(`${endpoints.patients}/${id}`, toPatientPayload(payload));
   return unwrapData(response);
 }
 
 export async function deletePatient(id) {
   const response = await httpClient.delete(`${endpoints.patients}/${id}`);
   return unwrapData(response);
+}
+
+function toPatientPayload(patient) {
+  return {
+    fullName: patient.HoTen?.trim(),
+    dateOfBirth: patient.NgaySinh || undefined,
+    gender: patient.GioiTinh || undefined,
+    phone: patient.SoDienThoai?.trim(),
+    email: patient.Email?.trim() || undefined,
+    address: patient.DiaChi?.trim() || undefined,
+    healthInsuranceNumber: patient.SoBaoHiemYTe?.trim() || undefined,
+    status: patient.TrangThai || 'Active',
+  };
 }

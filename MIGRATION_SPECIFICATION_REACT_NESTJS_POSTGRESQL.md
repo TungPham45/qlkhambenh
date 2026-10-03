@@ -173,21 +173,21 @@ Dùng cho các nghiệp vụ không cần người dùng chờ đợi, giúp tá
 
 ## 4. MA TRẬN PHÂN QUYỀN & VAI TRÒ (RBAC MATRIX)
 
-| Phân hệ / Endpoint Logic | Admin | Bác sĩ (`BacSi`) | Lễ tân (`LeTan`) | Người dùng (`NguoiDung`) |
-| :--- | :---: | :---: | :---: | :---: |
-| `POST /api/auth/register`, `POST /api/auth/login` | Có | Có | Có | Có |
-| `GET /api/accounts`, `POST /api/accounts` | Toàn quyền | Không | Không | Không |
-| `GET /api/staff`, `POST /api/staff` | Toàn quyền | Xem danh sách | Xem danh sách | Xem danh sách |
-| `GET /api/patients`, `POST /api/patients` | Toàn quyền | Xem/Tìm kiếm | Toàn quyền | Chỉ xem hồ sơ cá nhân |
-| `POST /api/appointments` | Toàn quyền | Không | Đặt cho khách | Đặt cho chính mình |
-| `PATCH /api/appointments/:id/status` | Toàn quyền | Cập nhật ca khám | Điều phối lịch | Hủy lịch của mình |
-| `POST /api/medical-records` | Xem | Tạo phiếu khám | Xem | Xem bệnh án của mình |
-| `POST /api/prescriptions` | Xem | Kê đơn thuốc | Không | Xem đơn thuốc của mình |
-| `GET /api/drugs`, `POST /api/drugs` | Toàn quyền | Xem danh mục | Xem danh mục | Không |
-| `POST /api/billings` | Toàn quyền | Xem | Tạo hóa đơn | Xem hóa đơn của mình |
-| `PATCH /api/billings/:id/status` (Thanh toán) | Toàn quyền | Không | Xác nhận thu tiền | Tự thanh toán online |
-| `GET /api/analytics/dashboard` | Toàn quyền | Xem số liệu cá nhân | Xem số liệu quầy | Không |
-| `GET /api/statistics/*` (Dự báo, Bất thường) | Toàn quyền | Không | Không | Không |
+| Phân hệ / Endpoint Logic | Admin | Bác sĩ (`BacSi`) | Bệnh nhân (`NguoiDung`) |
+| :--- | :---: | :---: | :---: |
+| `POST /api/auth/register`, `POST /api/auth/login` | Có | Có | Có |
+| `GET /api/accounts`, `POST /api/accounts` | Toàn quyền | Không | Không |
+| `GET /api/staff`, `POST /api/staff` | Toàn quyền | Xem danh sách | Xem danh sách |
+| `GET /api/patients`, `POST /api/patients` | Toàn quyền | Xem/Tìm kiếm | Chỉ xem hồ sơ cá nhân |
+| `POST /api/appointments` | Toàn quyền | Không | Đặt cho chính mình |
+| `PATCH /api/appointments/:id/status` | Toàn quyền | Cập nhật ca khám | Hủy lịch của mình |
+| `POST /api/medical-records` | Xem | Tạo phiếu khám | Xem bệnh án của mình |
+| `POST /api/prescriptions` | Xem | Kê đơn thuốc | Xem đơn thuốc của mình |
+| `GET /api/drugs`, `POST /api/drugs` | Toàn quyền | Xem danh mục | Không |
+| `POST /api/billings` | Toàn quyền | Xem | Xem hóa đơn của mình |
+| `PATCH /api/billings/:id/status` (Thanh toán) | Toàn quyền | Không | Tự thanh toán online |
+| `GET /api/analytics/dashboard` | Toàn quyền | Xem số liệu cá nhân | Không |
+| `GET /api/statistics/*` (Dự báo, Bất thường) | Toàn quyền | Không | Không |
 
 ---
 
@@ -239,7 +239,7 @@ PostgreSQL Server
 - **Message Patterns**:
   - `staff.get_all`, `staff.get_by_id`, `staff.create`, `staff.update`, `staff.get_doctors`.
 - **Tiêu chí**:
-  - Phân loại chuyên khoa (`specialty`): *Khoa nhi, Tai mũi họng, Khoa xét nghiệm, Khoa mắt, Lễ tân*.
+  - Phân loại chuyên khoa (`specialty`): *Khoa nhi, Tai mũi họng, Khoa xét nghiệm, Khoa mắt*.
 
 ---
 
@@ -461,7 +461,7 @@ frontend-react-ts/
 │   ├── layouts/                      # AppLayout, AuthLayout, Header, Sidebar
 │   ├── modules/                      # Feature modules
 │   │   ├── accounts/                 # Quản lý tài khoản & nhân viên
-│   │   ├── appointments/             # Lịch khám & Quầy tiếp đón lễ tân
+│   │   ├── appointments/             # Quản lý lịch khám
 │   │   ├── billing/                  # Quản lý hóa đơn & Thu ngân
 │   │   ├── doctor/                   # Bàn làm việc & Màn hình khám bệnh
 │   │   ├── medical-records/          # Bệnh án điện tử
@@ -493,7 +493,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(30) NOT NULL CHECK (role IN ('Admin', 'BacSi', 'LeTan', 'NguoiDung')),
+    role VARCHAR(30) NOT NULL CHECK (role IN ('Admin', 'BacSi', 'NguoiDung')),
     status VARCHAR(20) NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive', 'Locked')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

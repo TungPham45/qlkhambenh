@@ -137,6 +137,3 @@ INSERT INTO hoa_don (MaHoaDon, MaPhieu, NgayLap, TongTien, PhuongThucTT, TrangTh
 ('HD001', 1, '2026-04-10', 150000, 'Tien mat', 'Da thanh toan'),
 ('HD002', 2, '2026-04-11', 90000, 'Chuyen khoan', 'Chua thanh toan')
 ON DUPLICATE KEY UPDATE TongTien = VALUES(TongTien), PhuongThucTT = VALUES(PhuongThucTT), TrangThai = VALUES(TrangThai);
-
-INSERT INTO tai_khoan (TenDangNhap, MatKhau, VaiTro, TrangThai)
-VALUES ('letan1','123456','LeTan','Active');

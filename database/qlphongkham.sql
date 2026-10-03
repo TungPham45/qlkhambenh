@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS nhan_vien (
     NgaySinh DATE NULL,
     GioiTinh VARCHAR(10),
     SoDienThoai VARCHAR(15),
-    ChuyenKhoa ENUM('Khoa nhi','Tai mũi họng','Khoa xét nghiệm','Khoa mắt','Lễ Tân'),
+    ChuyenKhoa ENUM('Khoa nhi','Tai mũi họng','Khoa xét nghiệm','Khoa mắt'),
     TenDangNhap VARCHAR(50) UNIQUE,
     CONSTRAINT fk_nv_tk FOREIGN KEY (TenDangNhap) REFERENCES tai_khoan(TenDangNhap) ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -108,8 +108,6 @@ INSERT INTO tai_khoan (TenDangNhap, MatKhau, VaiTro, TrangThai) VALUES
 ('bs3','123456','BacSi','Active'),
 ('bs4','123456','BacSi','Active'),
 ('bs5','123456','BacSi','Active'),
-('letan1','123456','LeTan','Active'),
-('letan2','123456','LeTan','Active'),
 ('bn1','123456','NguoiDung','Active'),
 ('bn2','123456','NguoiDung','Active'),
 ('bn3','123456','NguoiDung','Active'),
@@ -169,9 +167,7 @@ VALUES
 (2, 'Tran Thi B', '1982-03-12', 'Nu', '09022222222', 'Khoa nhi', 'bs2'),
 (3, 'Le Quang C', '1983-04-13', 'Nam', '09033333333', 'Khoa mắt', 'bs3'),
 (4, 'Pham Thu D', '1984-05-14', 'Nu', '09044444444', 'Khoa xét nghiệm', 'bs4'),
-(5, 'Hoang Minh E', '1985-06-15', 'Nam', '09055555555', 'Tai mũi họng', 'bs5'),
-(6, 'Do Thi Le Tan 1', '1992-01-11', 'Nu', '09111111111', 'Lễ Tân', 'letan1'),
-(7, 'Pham Thi Le Tan 2', '1992-02-12', 'Nam', '09122222222', 'Lễ Tân', 'letan2')
+(5, 'Hoang Minh E', '1985-06-15', 'Nam', '09055555555', 'Tai mũi họng', 'bs5')
 ON DUPLICATE KEY UPDATE HoTen = VALUES(HoTen), NgaySinh = VALUES(NgaySinh), GioiTinh = VALUES(GioiTinh), SoDienThoai = VALUES(SoDienThoai), ChuyenKhoa = VALUES(ChuyenKhoa), TenDangNhap = VALUES(TenDangNhap);
 
 INSERT INTO benh_nhan (MaBN, HoTen, NgaySinh, GioiTinh, SoDienThoai, DiaChi, TienSuBenh, TenDangNhap) VALUES

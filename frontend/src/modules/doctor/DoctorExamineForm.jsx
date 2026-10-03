@@ -169,7 +169,7 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
         </div>
         {items.every((item) => !item.MaThuoc) && (
           <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-            ⚠ <strong>Lưu ý:</strong> Chưa chọn thuốc nào. Nếu không cần kê thuốc, lễ tân sẽ tạo hóa đơn chỉ với phí khám.
+            ⚠ <strong>Lưu ý:</strong> Chưa chọn thuốc nào. Nếu không cần kê thuốc, hóa đơn sẽ chỉ gồm phí khám.
           </div>
         )}
         <div className="grid gap-2">

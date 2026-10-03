@@ -62,7 +62,6 @@ Hệ thống đã có sẵn dữ liệu và tài khoản mẫu cho từng phân 
 |---|---|---|---|
 | **Quản trị viên (Admin)** | `admin` | `123456` | Toàn quyền quản trị hệ thống, nhân sự, tài chính |
 | **Bác sĩ (Doctor)** | `doctor1` | `123456` | Khám bệnh, chẩn đoán ICD-10, kê đơn thuốc, xem hồ sơ |
-| **Tiếp tân (Receptionist)** | `reception1` | `123456` | Tiếp đón, tạo hồ sơ bệnh nhân, đặt lịch khám |
 | **Dược sĩ (Pharmacist)** | `pharmacist1` | `123456` | Quản lý kho dược, xuất/nhập thuốc, phát thuốc theo đơn |
 | **Thu ngân (Cashier)** | `cashier1` | `123456` | Tính viện phí, xuất hóa đơn thanh toán |
 

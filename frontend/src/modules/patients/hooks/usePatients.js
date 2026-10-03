@@ -8,6 +8,7 @@ export function usePatients() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState({ page: 1, limit: 20 });
@@ -36,12 +37,13 @@ export function usePatients() {
           result = { rows: [], pagination: medicalRecordResult.pagination };
         }
       } else {
-        // Admin, LeTan, và NguoiDung xem tất cả bệnh nhân
+        // Admin và bệnh nhân xem danh sách bệnh nhân
         result = await listPatients(nextQuery);
       }
       
       setRows(result.rows);
       setPagination(result.pagination);
+      setSummary(result.summary || null);
       setQuery(nextQuery);
     } catch (caught) {
       setError(caught);
@@ -68,5 +70,5 @@ export function usePatients() {
     await load(query);
   }
 
-  return { rows, pagination, loading, error, query, setQuery, load, save, remove };
+  return { rows, pagination, summary, loading, error, query, setQuery, load, save, remove };
 }

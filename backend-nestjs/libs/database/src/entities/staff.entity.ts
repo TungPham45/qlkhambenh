@@ -11,31 +11,39 @@ import { Gender } from '@app/common';
 import { Account } from './account.entity';
 import { Appointment } from './appointment.entity';
 import { MedicalRecord } from './medical-record.entity';
+import { DoctorSpecialty } from './clinic-model.entity';
 
-@Entity('staff')
+@Entity('bac_si')
 export class Staff {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
 
-  @Column({ name: 'full_name', length: 150 })
+  @Column({ name: 'ho_ten', length: 150 })
   fullName: string;
 
-  @Column({ name: 'date_of_birth', type: 'date', nullable: true })
+  @Column({ name: 'ngay_sinh', type: 'date', nullable: true })
   dateOfBirth: string;
 
-  @Column({ type: 'varchar', length: 10, nullable: true })
+  @Column({ name: 'gioi_tinh', type: 'varchar', length: 10, nullable: true })
   gender: Gender;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ name: 'so_dien_thoai', length: 20, nullable: true })
   phone: string;
 
-  @Column({ length: 100, nullable: true })
-  specialty: string;
+  specialty?: string;
 
-  @Column({ length: 50, nullable: true, unique: true })
-  username: string;
+  username?: string;
 
-  @Column({ length: 20, default: 'Active' })
+  @Column({ length: 150, nullable: true, unique: true })
+  email: string;
+
+  @Column({ name: 'bang_cap', length: 255, nullable: true })
+  degree: string;
+
+  @Column({ name: 'so_chung_chi_hanh_nghe', length: 100, nullable: true, unique: true })
+  practiceCertificate: string;
+
+  @Column({ name: 'trang_thai', length: 20, default: 'Active' })
   status: string;
 
   @OneToOne(() => Account, (acc) => acc.staff)
@@ -47,9 +55,12 @@ export class Staff {
   @OneToMany(() => MedicalRecord, (rec) => rec.doctor)
   medicalRecords?: MedicalRecord[];
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @OneToMany(() => DoctorSpecialty, (assignment) => assignment.doctor)
+  doctorSpecialties?: DoctorSpecialty[];
+
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

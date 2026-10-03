@@ -5,9 +5,10 @@ const emptyPatient = {
   NgaySinh: "",
   GioiTinh: "Nam",
   SoDienThoai: "",
+  Email: "",
   DiaChi: "",
-  TienSuBenh: "",
-  TenDangNhap: ""
+  SoBaoHiemYTe: "",
+  TrangThai: "Active"
 };
 
 export function PatientForm({ initialValue, onSubmit, onCancel, saving }) {
@@ -30,7 +31,7 @@ export function PatientForm({ initialValue, onSubmit, onCancel, saving }) {
     <form className="grid gap-4" onSubmit={handleSubmit}>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Họ tên
+          Họ và tên
           <input className="form-input" required value={form.HoTen} onChange={(event) => updateField("HoTen", event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
@@ -42,23 +43,31 @@ export function PatientForm({ initialValue, onSubmit, onCancel, saving }) {
           <select className="form-input" value={form.GioiTinh || ""} onChange={(event) => updateField("GioiTinh", event.target.value)}>
             <option value="Nam">Nam</option>
             <option value="Nu">Nữ</option>
+            <option value="Khac">Khác</option>
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Số điện thoại
-          <input className="form-input" value={form.SoDienThoai || ""} onChange={(event) => updateField("SoDienThoai", event.target.value)} />
+          <input className="form-input" required value={form.SoDienThoai || ""} onChange={(event) => updateField("SoDienThoai", event.target.value)} />
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700">
+          Email
+          <input className="form-input" type="email" value={form.Email || ""} onChange={(event) => updateField("Email", event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700 md:col-span-2">
           Địa chỉ
           <input className="form-input" value={form.DiaChi || ""} onChange={(event) => updateField("DiaChi", event.target.value)} />
         </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700 md:col-span-2">
-          Tiền sử bệnh
-          <textarea className="form-input min-h-24" value={form.TienSuBenh || ""} onChange={(event) => updateField("TienSuBenh", event.target.value)} />
+        <label className="grid gap-1 text-sm font-medium text-slate-700">
+          Số bảo hiểm y tế
+          <input className="form-input" value={form.SoBaoHiemYTe || ""} onChange={(event) => updateField("SoBaoHiemYTe", event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Tên đăng nhập
-          <input className="form-input" required value={form.TenDangNhap || ""} onChange={(event) => updateField("TenDangNhap", event.target.value)} />
+          Trạng thái
+          <select className="form-input" value={form.TrangThai || "Active"} onChange={(event) => updateField("TrangThai", event.target.value)}>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Ngừng hoạt động</option>
+          </select>
         </label>
       </div>
       <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">

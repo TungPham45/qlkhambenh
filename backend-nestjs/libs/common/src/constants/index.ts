@@ -1,7 +1,6 @@
 export enum UserRole {
   ADMIN = 'Admin',
   BAC_SI = 'BacSi',
-  LE_TAN = 'LeTan',
   NGUOI_DUNG = 'NguoiDung',
 }
 
@@ -60,6 +59,7 @@ export const MSG = {
   AUTH_LOGIN: { cmd: 'auth.login' },
   AUTH_REGISTER: { cmd: 'auth.register' },
   AUTH_ME: { cmd: 'auth.me' },
+  AUTH_UPDATE_PROFILE: { cmd: 'auth.update_profile' },
   AUTH_GET_ACCOUNTS: { cmd: 'auth.get_accounts' },
   AUTH_GET_ACCOUNT_BY_USER: { cmd: 'auth.get_account_by_user' },
   AUTH_CREATE_ACCOUNT: { cmd: 'auth.create_account' },

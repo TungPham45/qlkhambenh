@@ -21,10 +21,20 @@ import {
 
 const AuthContext = createContext(null);
 
+function getInitialToken() {
+  const storedUser = getStoredUser();
+  const storedUsername = String(storedUser?.username || storedUser?.TenDangNhap || "").toLowerCase().replace(/\s+/g, "");
+
+  if (storedUsername === "admin2") {
+    clearSession();
+    return null;
+  }
+
+  return getToken();
+}
+
 export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(() =>
-    getToken()
-  );
+  const [token, setTokenState] = useState(getInitialToken);
 
   const [user, setUser] = useState(() =>
     getStoredUser()
@@ -53,6 +63,11 @@ export function AuthProvider({ children }) {
     },
     []
   );
+
+  const updateUser = useCallback((nextUser) => {
+    setStoredUser(nextUser);
+    setUser(nextUser);
+  }, []);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -96,10 +111,15 @@ export function AuthProvider({ children }) {
             endpoints.auth.me
           );
 
-        const authenticatedUser =
-          response.data?.user ||
-          response.data ||
+        const verifiedUser =
+          response?.user ||
+          response?.data?.user ||
+          response?.data ||
           null;
+
+        const authenticatedUser = verifiedUser
+          ? { ...getStoredUser(), ...verifiedUser }
+          : null;
 
         if (!authenticatedUser) {
           throw new Error(
@@ -171,13 +191,14 @@ export function AuthProvider({ children }) {
             endpoints.auth.me
           );
 
-        const nextUser =
+        const profileUser =
           meResponse?.user ||
           meResponse?.data?.user ||
           meResponse?.data ||
-          response?.user ||
-          response?.data?.user ||
-          null;
+          {};
+        const loginUser = response?.user || response?.data?.user || {};
+        const mergedUser = { ...loginUser, ...profileUser };
+        const nextUser = Object.keys(mergedUser).length > 0 ? mergedUser : null;
 
         if (!nextUser) {
           throw new Error(
@@ -226,6 +247,7 @@ export function AuthProvider({ children }) {
 
       login,
       logout,
+      updateUser,
     }),
     [
       token,
@@ -234,6 +256,7 @@ export function AuthProvider({ children }) {
       loading,
       login,
       logout,
+      updateUser,
     ]
   );
 

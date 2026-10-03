@@ -34,7 +34,6 @@ Luồng chuẩn:
 
 - `Admin`
 - `BacSi`
-- `LeTan`
 - `NguoiDung`
 
 Tên role cần nhất quán giữa backend và frontend.

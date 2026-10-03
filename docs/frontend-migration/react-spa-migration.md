@@ -75,7 +75,6 @@ Frontend chỉ nên dùng để ẩn menu và route phù hợp với:
 
 - `Admin`
 - `BacSi`
-- `LeTan`
 - `NguoiDung`
 
 Tuy nhiên, backend vẫn phải kiểm tra quyền lại ở endpoint.

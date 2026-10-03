@@ -34,7 +34,6 @@ docker-compose ps
 - **Tài khoản mặc định**:
   - `admin` / `123456` (Quản trị viên hệ thống)
   - `doctor1` / `123456` (Bác sĩ)
-  - `reception1` / `123456` (Tiếp tân)
   - `pharmacist1` / `123456` (Dược sĩ)
   - `cashier1` / `123456` (Thu ngân)
 

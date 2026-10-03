@@ -129,7 +129,7 @@ function BookAppointmentTab() {
   async function handleBook(e) {
     e.preventDefault();
     if (!user?.MaBN) {
-      notify("Tài khoản chưa liên kết mã bệnh nhân. Vui lòng liên hệ lễ tân.", "error");
+      notify("Tài khoản chưa liên kết mã bệnh nhân. Vui lòng liên hệ quản trị viên.", "error");
       return;
     }
     setSaving(true);
@@ -229,7 +229,7 @@ function BookAppointmentTab() {
 
           {!user?.MaBN && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              ⚠️ Tài khoản chưa liên kết mã bệnh nhân. Vui lòng liên hệ lễ tân để được hỗ trợ.
+              ⚠️ Tài khoản chưa liên kết mã bệnh nhân. Vui lòng liên hệ quản trị viên để được hỗ trợ.
             </div>
           )}
 

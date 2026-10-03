@@ -24,6 +24,7 @@ import {
   RegisterDto,
   CreateAccountDto,
   UpdateAccountDto,
+  UpdateProfileDto,
 } from '@app/common';
 import { RolesGuard } from '../guards/roles.guard';
 
@@ -54,6 +55,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Lấy thông tin tài khoản hiện tại' })
   async me(@CurrentUser() user: any) {
     return { user };
+  }
+
+  @ApiBearerAuth()
+  @Put('auth/profile')
+  @ApiOperation({ summary: 'Cập nhật hồ sơ tài khoản hiện tại' })
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return await firstValueFrom(
+      this.authClient.send(MSG.AUTH_UPDATE_PROFILE, { user, dto }),
+    );
   }
 
   @Public()

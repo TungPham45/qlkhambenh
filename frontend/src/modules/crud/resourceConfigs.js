@@ -27,8 +27,7 @@ export const paymentOptions = [
 export const roleOptions = [
   { value: "Admin", label: "Admin" },
   { value: "BacSi", label: "Bác sĩ" },
-  { value: "LeTan", label: "Lễ tân" },
-  { value: "NguoiDung", label: "Người dùng" }
+  { value: "NguoiDung", label: "Bệnh nhân" }
 ];
 
 export const accountStatusOptions = [
@@ -40,8 +39,7 @@ export const specialtyOptions = [
   { value: "Khoa nhi", label: "Khoa nhi" },
   { value: "Tai mui hong", label: "Tai mũi họng" },
   { value: "Khoa xet nghiem", label: "Khoa xét nghiệm" },
-  { value: "Khoa mat", label: "Khoa mắt" },
-  { value: "Le Tan", label: "Lễ tân" }
+  { value: "Khoa mat", label: "Khoa mắt" }
 ];
 
 export const lookupConfigs = {

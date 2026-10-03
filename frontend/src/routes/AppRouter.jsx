@@ -7,7 +7,10 @@ import { ProtectedRoute } from "./ProtectedRoute.jsx";
 
 import { LoginPage } from "../pages/LoginPage.jsx";
 import { RegisterPage } from "../pages/RegisterPage.jsx";
+import { HomePage } from "../pages/HomePage.jsx";
 import { DefaultPage } from "../pages/DefaultPage.jsx";
+import { PatientFeaturePage } from "../pages/PatientFeaturePage.jsx";
+import { AdminPlaceholderPage } from "../pages/AdminPlaceholderPage.jsx";
 import { DashboardPage } from "../pages/DashboardPage.jsx";
 import { AnalyticsPage } from "../pages/AnalyticsPage.jsx";
 import { StatisticsPage } from "../pages/StatisticsPage.jsx";
@@ -25,14 +28,20 @@ import { UserPortalPage } from "../modules/user-portal/UserPortalPage.jsx";
 
 // ── Bác sĩ ─────────────────────────────────────────
 import { DoctorSchedulePage } from "../modules/doctor/DoctorSchedulePage.jsx";
-
-// ── Lễ tân ─────────────────────────────────────────
-import { ReceptionAppointmentsPage } from "../modules/appointments/ReceptionAppointmentsPage.jsx";
-import { ReceptionBillingPage } from "../modules/billing/ReceptionBillingPage.jsx";
+import { roles } from "../utils/roles.js";
 
 export const appRouter = createBrowserRouter([
+  { path: "/", element: <HomePage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
+  {
+    element: <ProtectedRoute roles={roles.patient} />,
+    children: [
+      { path: "/dat-lich-kham", element: <PatientFeaturePage /> },
+      { path: "/ho-so-suc-khoe", element: <PatientFeaturePage /> },
+      { path: "/lich-kham", element: <PatientFeaturePage /> },
+    ],
+  },
 
   {
     element: <ProtectedRoute />,
@@ -40,8 +49,6 @@ export const appRouter = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <DefaultPage /> },
-
           // ── Shared / Admin ─────────────────────────
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/patients", element: <PatientsListPage /> },
@@ -51,6 +58,9 @@ export const appRouter = createBrowserRouter([
           { path: "/medical-records", element: <MedicalRecordsPage /> },
           { path: "/accounts", element: <AccountsPage /> },
           { path: "/staff", element: <StaffPage /> },
+          { path: "/admin/specialties", element: <AdminPlaceholderPage /> },
+          { path: "/admin/diseases", element: <AdminPlaceholderPage /> },
+          { path: "/admin/drug-suggestions", element: <AdminPlaceholderPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/statistics", element: <StatisticsPage /> },
 
@@ -63,9 +73,6 @@ export const appRouter = createBrowserRouter([
           // ── Bác sĩ (BacSi) ─────────────────────────
           { path: "/doctor-schedule", element: <DoctorSchedulePage /> },
 
-          // ── Lễ tân (LeTan) ─────────────────────────
-          { path: "/reception-appointments", element: <ReceptionAppointmentsPage /> },
-          { path: "/reception-billing", element: <ReceptionBillingPage /> },
         ],
       },
     ],

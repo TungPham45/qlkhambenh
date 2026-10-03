@@ -6,6 +6,9 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import "./styles/index.css";
 import "./styles/mvc.css";
+import "./styles/admin.css";
+import "./styles/public.css";
+import "./styles/auth.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
