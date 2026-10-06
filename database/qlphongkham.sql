@@ -1,12 +1,23 @@
 -- ============================================================
--- QLPHONGKHAM - CSDL POSTGRESQL THONG NHAT THEO BIEU DO LOP
--- He quan tri: PostgreSQL 15+
--- ORM: TypeORM (NestJS)
--- Quy uoc khoa: id_<ten_bang>
--- Ghi chu: Docker nen tao database bang POSTGRES_DB=qlphongkham.
--- Chay file nay BEN TRONG database qlphongkham.
+-- QLKHAMBENH - PostgreSQL 15+ / NestJS / TypeORM
+-- CSDL bam sat bieu do lop; khong them thuoc tinh nghiep vu ngoai bieu do lop.
+-- Nghiep vu chinh xu ly tai NestJS Service + TypeORM Transaction; PostgreSQL tap trung vao luu tru va toan ven du lieu.
+-- Frontend: ReactJS
+-- Backend: NestJS qua API Gateway
+-- CSDL: PostgreSQL, truy cập từ NestJS thông qua TypeORM
+-- Cache / session / message data: Redis (không tạo bảng SQL trong file này)
+-- Triển khai: Docker
+-- Kiểm thử API: Postman (không truy cập PostgreSQL trực tiếp)
+-- Quy ước khóa chính: id_<ten_bang>
 -- ============================================================
+-- CÔNG DỤNG: bản CSDL demo đầy đủ để import bằng pgAdmin/psql hoặc reset môi trường demo.
+-- File CÓ DROP các bảng nghiệp vụ trước khi tạo lại. Không dùng để cập nhật production.
+-- Dùng cho demo, kiểm thử API bằng Postman và kiểm thử luồng ReactJS -> API Gateway -> NestJS.
 
+BEGIN;
+SET client_encoding = 'UTF8';
+SET TIME ZONE 'Asia/Ho_Chi_Minh';
+SET search_path TO public;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Xoa cac bang cu de co the chay lai file seed nhieu lan trong moi truong demo.
@@ -44,8 +55,10 @@ CREATE TABLE tai_khoan (
     mat_khau_ma_hoa VARCHAR(255) NOT NULL,
     vai_tro VARCHAR(50) NOT NULL,
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_tai_khoan_vai_tro CHECK (vai_tro IN ('Admin', 'BacSi', 'NguoiDung')),
+    CONSTRAINT chk_tai_khoan_trang_thai CHECK (trang_thai IN ('Active', 'Inactive', 'Locked'))
 );
 
 -- 2. QUAN_LY
@@ -57,7 +70,7 @@ CREATE TABLE quan_ly (
     email VARCHAR(150),
     CONSTRAINT fk_quan_ly_tai_khoan
         FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- 3. NHAT_KY_HOAT_DONG
@@ -69,7 +82,7 @@ CREATE TABLE nhat_ky_hoat_dong (
     doi_tuong_id VARCHAR(100),
     du_lieu_cu JSONB,
     du_lieu_moi JSONB,
-    thoi_gian TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    thoi_gian TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_nhat_ky_tai_khoan
         FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
         ON UPDATE CASCADE ON DELETE SET NULL
@@ -81,8 +94,8 @@ CREATE TABLE chuyen_khoa (
     ten_chuyen_khoa VARCHAR(150) NOT NULL UNIQUE,
     mo_ta TEXT,
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. BAC_SI
@@ -97,11 +110,11 @@ CREATE TABLE bac_si (
     bang_cap VARCHAR(255),
     so_chung_chi_hanh_nghe VARCHAR(100) UNIQUE,
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_bac_si_tai_khoan
         FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- 6. BAC_SI_CHUYEN_KHOA
@@ -110,7 +123,7 @@ CREATE TABLE bac_si_chuyen_khoa (
     id_bac_si BIGINT NOT NULL,
     id_chuyen_khoa BIGINT NOT NULL,
     la_chuyen_khoa_chinh BOOLEAN NOT NULL DEFAULT FALSE,
-    ngay_gan TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_gan TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id_bac_si, id_chuyen_khoa),
     CONSTRAINT fk_bsck_bac_si
         FOREIGN KEY (id_bac_si) REFERENCES bac_si(id_bac_si)
@@ -130,8 +143,8 @@ CREATE TABLE lich_lam_viec (
     thoi_luong_moi_ca INTEGER NOT NULL DEFAULT 30,
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
     ghi_chu TEXT,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_lich_lam_viec_bac_si
         FOREIGN KEY (id_bac_si) REFERENCES bac_si(id_bac_si)
         ON UPDATE CASCADE ON DELETE CASCADE,
@@ -151,11 +164,11 @@ CREATE TABLE benh_nhan (
     dia_chi VARCHAR(255),
     so_bao_hiem_y_te VARCHAR(50),
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_benh_nhan_tai_khoan
         FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- 9. TIEN_SU_BENH
@@ -166,10 +179,10 @@ CREATE TABLE tien_su_benh (
     mo_ta TEXT,
     ngay_phat_hien DATE,
     ghi_chu TEXT,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_tien_su_benh_benh_nhan
         FOREIGN KEY (id_benh_nhan) REFERENCES benh_nhan(id_benh_nhan)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 -- 10. LICH_HEN
@@ -184,12 +197,12 @@ CREATE TABLE lich_hen (
     nguon_dat_lich VARCHAR(50),
     ghi_chu TEXT,
     ly_do_huy TEXT,
-    thoi_gian_huy TIMESTAMP,
-    thoi_gian_check_in TIMESTAMP,
-    thoi_gian_bat_dau_kham TIMESTAMP,
-    thoi_gian_ket_thuc_kham TIMESTAMP,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    thoi_gian_huy TIMESTAMPTZ,
+    thoi_gian_check_in TIMESTAMPTZ,
+    thoi_gian_bat_dau_kham TIMESTAMPTZ,
+    thoi_gian_ket_thuc_kham TIMESTAMPTZ,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_lich_hen_benh_nhan
         FOREIGN KEY (id_benh_nhan) REFERENCES benh_nhan(id_benh_nhan)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -210,13 +223,13 @@ CREATE TABLE lich_su_lich_hen (
     trang_thai_moi VARCHAR(50),
     loai_thay_doi VARCHAR(50) NOT NULL,
     ly_do TEXT,
-    id_tai_khoan UUID,
-    thoi_gian_thay_doi TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    nguoi_thay_doi UUID,
+    thoi_gian_thay_doi TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_lich_su_lich_hen
         FOREIGN KEY (id_lich_hen) REFERENCES lich_hen(id_lich_hen)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_lich_su_nguoi_thay_doi
-        FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
+        FOREIGN KEY (nguoi_thay_doi) REFERENCES tai_khoan(id_tai_khoan)
         ON UPDATE CASCADE ON DELETE SET NULL
 );
 
@@ -233,10 +246,10 @@ CREATE TABLE tiep_nhan_benh_nhan (
     spo2 NUMERIC(5,2),
     trieu_chung_ban_dau TEXT,
     ghi_chu TEXT,
-    thoi_gian_ghi_nhan TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    thoi_gian_ghi_nhan TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_tiep_nhan_lich_hen
         FOREIGN KEY (id_lich_hen) REFERENCES lich_hen(id_lich_hen)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT chk_tiep_nhan_can_nang CHECK (can_nang IS NULL OR can_nang > 0),
     CONSTRAINT chk_tiep_nhan_chieu_cao CHECK (chieu_cao IS NULL OR chieu_cao > 0),
     CONSTRAINT chk_tiep_nhan_spo2 CHECK (spo2 IS NULL OR (spo2 >= 0 AND spo2 <= 100))
@@ -250,8 +263,8 @@ CREATE TABLE danh_muc_ten_benh (
     mo_ta TEXT,
     nhom_benh VARCHAR(100),
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Active',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 14. PHIEU_KHAM
@@ -268,11 +281,11 @@ CREATE TABLE phieu_kham (
     ghi_chu_bac_si TEXT,
     ngay_tai_kham DATE,
     phi_kham NUMERIC(12,2) NOT NULL DEFAULT 0,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_phieu_kham_lich_hen
         FOREIGN KEY (id_lich_hen) REFERENCES lich_hen(id_lich_hen)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_phieu_kham_benh_nhan
         FOREIGN KEY (id_benh_nhan) REFERENCES benh_nhan(id_benh_nhan)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -289,10 +302,10 @@ CREATE TABLE chan_doan (
     id_danh_muc_ten_benh BIGINT NOT NULL,
     la_chan_doan_chinh BOOLEAN NOT NULL DEFAULT FALSE,
     ghi_chu TEXT,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_chan_doan_phieu_kham
         FOREIGN KEY (id_phieu_kham) REFERENCES phieu_kham(id_phieu_kham)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_chan_doan_danh_muc_benh
         FOREIGN KEY (id_danh_muc_ten_benh) REFERENCES danh_muc_ten_benh(id_danh_muc_ten_benh)
         ON UPDATE CASCADE ON DELETE RESTRICT
@@ -310,8 +323,8 @@ CREATE TABLE thuoc (
     han_su_dung DATE,
     nha_san_xuat VARCHAR(255),
     dang_hoat_dong BOOLEAN NOT NULL DEFAULT TRUE,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_thuoc_don_gia CHECK (don_gia >= 0),
     CONSTRAINT chk_thuoc_ton CHECK (so_luong_ton >= 0)
 );
@@ -326,14 +339,14 @@ CREATE TABLE goi_y_thuoc (
     lieu_dung_goi_y VARCHAR(255),
     ghi_chu TEXT,
     dang_hoat_dong BOOLEAN NOT NULL DEFAULT TRUE,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_goi_y_thuoc_benh
         FOREIGN KEY (id_danh_muc_ten_benh) REFERENCES danh_muc_ten_benh(id_danh_muc_ten_benh)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_goi_y_thuoc_thuoc
         FOREIGN KEY (id_thuoc) REFERENCES thuoc(id_thuoc)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT uq_goi_y_benh_thuoc UNIQUE (id_danh_muc_ten_benh, id_thuoc),
     CONSTRAINT chk_goi_y_uu_tien CHECK (muc_do_uu_tien > 0)
 );
@@ -346,7 +359,7 @@ CREATE TABLE giao_dich_kho_thuoc (
     so_luong INTEGER NOT NULL,
     tham_chieu_id BIGINT,
     ghi_chu TEXT,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_giao_dich_kho_thuoc
         FOREIGN KEY (id_thuoc) REFERENCES thuoc(id_thuoc)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -362,11 +375,11 @@ CREATE TABLE don_thuoc (
     ngay_ke_don DATE NOT NULL,
     ghi_chu TEXT,
     trang_thai VARCHAR(30) NOT NULL DEFAULT 'Da ke',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_don_thuoc_phieu_kham
         FOREIGN KEY (id_phieu_kham) REFERENCES phieu_kham(id_phieu_kham)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_don_thuoc_benh_nhan
         FOREIGN KEY (id_benh_nhan) REFERENCES benh_nhan(id_benh_nhan)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -387,13 +400,14 @@ CREATE TABLE chi_tiet_don_thuoc (
     duong_dung VARCHAR(100),
     huong_dan TEXT,
     don_gia_tai_thoi_diem_ke NUMERIC(12,2) NOT NULL DEFAULT 0,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_ctdt_don_thuoc
         FOREIGN KEY (id_don_thuoc) REFERENCES don_thuoc(id_don_thuoc)
         ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_ctdt_thuoc
         FOREIGN KEY (id_thuoc) REFERENCES thuoc(id_thuoc)
         ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT uq_ctdt_don_thuoc_thuoc UNIQUE (id_don_thuoc, id_thuoc),
     CONSTRAINT chk_ctdt_so_luong CHECK (so_luong > 0),
     CONSTRAINT chk_ctdt_so_ngay CHECK (so_ngay_dung IS NULL OR so_ngay_dung > 0),
     CONSTRAINT chk_ctdt_don_gia CHECK (don_gia_tai_thoi_diem_ke >= 0)
@@ -409,11 +423,11 @@ CREATE TABLE hoa_don (
     tien_thuoc NUMERIC(12,2) NOT NULL DEFAULT 0,
     tong_tien NUMERIC(12,2) NOT NULL DEFAULT 0,
     trang_thai_thanh_toan VARCHAR(50) NOT NULL DEFAULT 'Chua thanh toan',
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    ngay_cap_nhat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngay_cap_nhat TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_hoa_don_phieu_kham
         FOREIGN KEY (id_phieu_kham) REFERENCES phieu_kham(id_phieu_kham)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_hoa_don_benh_nhan
         FOREIGN KEY (id_benh_nhan) REFERENCES benh_nhan(id_benh_nhan)
         ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -431,10 +445,10 @@ CREATE TABLE thanh_toan (
     phuong_thuc_thanh_toan VARCHAR(50) NOT NULL,
     ma_giao_dich VARCHAR(100) UNIQUE,
     trang_thai VARCHAR(30) NOT NULL,
-    thoi_gian_thanh_toan TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    thoi_gian_thanh_toan TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_thanh_toan_hoa_don
         FOREIGN KEY (id_hoa_don) REFERENCES hoa_don(id_hoa_don)
-        ON UPDATE CASCADE ON DELETE CASCADE,
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT chk_thanh_toan_so_tien CHECK (so_tien > 0)
 );
 
@@ -448,16 +462,16 @@ CREATE TABLE thong_bao (
     tieu_de VARCHAR(255) NOT NULL,
     noi_dung TEXT NOT NULL,
     trang_thai VARCHAR(30) NOT NULL,
-    thoi_gian_du_kien_gui TIMESTAMP,
-    thoi_gian_gui TIMESTAMP,
-    thoi_gian_doc TIMESTAMP,
-    ngay_tao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    thoi_gian_du_kien_gui TIMESTAMPTZ,
+    thoi_gian_gui TIMESTAMPTZ,
+    thoi_gian_doc TIMESTAMPTZ,
+    ngay_tao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_thong_bao_tai_khoan
         FOREIGN KEY (id_tai_khoan) REFERENCES tai_khoan(id_tai_khoan)
         ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_thong_bao_lich_hen
         FOREIGN KEY (id_lich_hen) REFERENCES lich_hen(id_lich_hen)
-        ON UPDATE CASCADE ON DELETE CASCADE
+        ON UPDATE CASCADE ON DELETE SET NULL
 );
 
 -- 24. CHI_SO_THONG_KE
@@ -465,7 +479,7 @@ CREATE TABLE chi_so_thong_ke (
     id_chi_so_thong_ke BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     loai_chi_so VARCHAR(100) NOT NULL,
     du_lieu_thong_ke JSONB NOT NULL,
-    thoi_gian_tinh TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    thoi_gian_tinh TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================
@@ -482,6 +496,11 @@ CREATE INDEX idx_hoa_don_ngay ON hoa_don(ngay_lap);
 CREATE INDEX idx_thanh_toan_hoa_don ON thanh_toan(id_hoa_don);
 CREATE INDEX idx_thong_bao_tai_khoan ON thong_bao(id_tai_khoan);
 CREATE INDEX idx_giao_dich_thuoc ON giao_dich_kho_thuoc(id_thuoc, ngay_tao);
+CREATE INDEX idx_bac_si_ho_ten ON bac_si(ho_ten);
+CREATE INDEX idx_benh_nhan_ho_ten ON benh_nhan(ho_ten);
+CREATE INDEX idx_thuoc_ten_thuoc ON thuoc(ten_thuoc);
+CREATE INDEX idx_lich_hen_trang_thai ON lich_hen(trang_thai);
+CREATE INDEX idx_thong_bao_lich_hen ON thong_bao(id_lich_hen);
 
 -- Chi mot chuyen khoa chinh cho moi bac si.
 CREATE UNIQUE INDEX uq_bac_si_chuyen_khoa_chinh
@@ -498,8 +517,8 @@ CREATE UNIQUE INDEX uq_lich_hen_bac_si_khung_gio
     ON lich_hen(id_bac_si, ngay_hen, gio_hen)
     WHERE trang_thai <> 'Huy';
 
--- PostgreSQL khong co ON UPDATE CURRENT_TIMESTAMP nhu MySQL.
--- Trigger nay dam bao ngay_cap_nhat tu dong doi khi UPDATE.
+-- Trigger ky thuat duy nhat: tu dong cap nhat ngay_cap_nhat.
+-- Day la co che ky thuat luu vet, khong phai nghiep vu kham benh.
 CREATE OR REPLACE FUNCTION fn_set_ngay_cap_nhat()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -533,72 +552,150 @@ FOR EACH ROW EXECUTE FUNCTION fn_set_ngay_cap_nhat();
 CREATE TRIGGER trg_hoa_don_ngay_cap_nhat BEFORE UPDATE ON hoa_don
 FOR EACH ROW EXECUTE FUNCTION fn_set_ngay_cap_nhat();
 
+
+-- ============================================================
+-- RANG BUOC TOAN VEN DU LIEU (KHAI BAO)
+-- Nghiep vu dong (kiem tra khung gio, chuyen trang thai, tinh hoa don,
+-- thanh toan, cap nhat ton kho) duoc xu ly tai NestJS Service + TypeORM Transaction.
+-- PostgreSQL chi giu PK/FK/UNIQUE/CHECK/INDEX can thiet.
+-- ============================================================
+
+-- Bao toan tinh nhat quan giua cac khoa ngoai snapshot da co trong bieu do lop.
+ALTER TABLE lich_hen
+    ADD CONSTRAINT uq_lich_hen_id_bs_bn
+    UNIQUE (id_lich_hen, id_bac_si, id_benh_nhan);
+
+ALTER TABLE phieu_kham
+    ADD CONSTRAINT fk_phieu_kham_lich_hen_snapshot
+    FOREIGN KEY (id_lich_hen, id_bac_si, id_benh_nhan)
+    REFERENCES lich_hen(id_lich_hen, id_bac_si, id_benh_nhan)
+    ON UPDATE CASCADE ON DELETE RESTRICT;
+
+ALTER TABLE phieu_kham
+    ADD CONSTRAINT uq_phieu_kham_id_bn_bs
+    UNIQUE (id_phieu_kham, id_benh_nhan, id_bac_si);
+
+ALTER TABLE phieu_kham
+    ADD CONSTRAINT uq_phieu_kham_id_bn
+    UNIQUE (id_phieu_kham, id_benh_nhan);
+
+ALTER TABLE don_thuoc
+    ADD CONSTRAINT fk_don_thuoc_phieu_kham_snapshot
+    FOREIGN KEY (id_phieu_kham, id_benh_nhan, id_bac_si)
+    REFERENCES phieu_kham(id_phieu_kham, id_benh_nhan, id_bac_si)
+    ON UPDATE CASCADE ON DELETE RESTRICT;
+
+ALTER TABLE hoa_don
+    ADD CONSTRAINT fk_hoa_don_phieu_kham_snapshot
+    FOREIGN KEY (id_phieu_kham, id_benh_nhan)
+    REFERENCES phieu_kham(id_phieu_kham, id_benh_nhan)
+    ON UPDATE CASCADE ON DELETE RESTRICT;
+
+-- Chuan hoa loai giao dich kho bang cac gia tri da co trong mo hinh.
+ALTER TABLE giao_dich_kho_thuoc
+    ADD CONSTRAINT chk_giao_dich_loai
+    CHECK (loai_giao_dich IN ('NHAP_KHO', 'XUAT_DON_THUOC'));
+
+ALTER TABLE giao_dich_kho_thuoc
+    ADD CONSTRAINT chk_giao_dich_tham_chieu
+    CHECK (
+        (loai_giao_dich = 'NHAP_KHO' AND tham_chieu_id IS NULL)
+        OR
+        (loai_giao_dich = 'XUAT_DON_THUOC' AND tham_chieu_id IS NOT NULL)
+    );
+
+ALTER TABLE giao_dich_kho_thuoc
+    ADD CONSTRAINT fk_giao_dich_tham_chieu_don_thuoc
+    FOREIGN KEY (tham_chieu_id) REFERENCES don_thuoc(id_don_thuoc)
+    ON UPDATE CASCADE ON DELETE RESTRICT;
+
+-- Trang thai lich hen bam theo cac hanh vi cua lop LichHen:
+-- datLich -> xacNhan -> checkIn -> bat dau kham -> hoan thanh; co the huy.
+ALTER TABLE lich_hen
+    ADD CONSTRAINT chk_lich_hen_trang_thai
+    CHECK (trang_thai IN (
+        'Cho xac nhan',
+        'Da xac nhan',
+        'Da check-in',
+        'Dang kham',
+        'Hoan thanh',
+        'Huy'
+    ));
+
+ALTER TABLE hoa_don
+    ADD CONSTRAINT chk_hoa_don_trang_thai
+    CHECK (trang_thai_thanh_toan IN ('Chua thanh toan', 'Thanh toan mot phan', 'Da thanh toan'));
+
+ALTER TABLE thanh_toan
+    ADD CONSTRAINT chk_thanh_toan_trang_thai
+    CHECK (trang_thai IN ('Thanh cong', 'That bai', 'Hoan tien'));
+
+-- Cac chuyen trang thai, quy tac dat lich theo lich lam viec, cap nhat ton kho,
+-- tinh tong hoa don va dong bo thanh toan PHAI duoc NestJS Service xu ly trong transaction.
+
 -- ============================================================
 -- DU LIEU MAU
 -- Du lieu demo duoc chuyen tu file qlphongkham.sql cu va bo sung
 -- cho cac bang moi trong bieu do lop.
--- Mat khau 123456 chi phuc vu demo; khi backend dung bcrypt/argon2,
--- cot mat_khau_ma_hoa phai luu chuoi bam thuc te.
+-- Mat khau demo: 123456. Cot mat_khau_ma_hoa ben duoi da luu bcrypt hash de phu hop NestJS.
 -- ============================================================
 INSERT INTO tai_khoan (id_tai_khoan, ten_dang_nhap, mat_khau_ma_hoa, vai_tro, trang_thai, ngay_tao, ngay_cap_nhat) VALUES
-('00000000-0000-0000-0000-000000000001', 'admin', '123456', 'Admin', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000101', 'bs1', '123456', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000102', 'bs2', '123456', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000103', 'bs3', '123456', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000104', 'bs4', '123456', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000105', 'bs5', '123456', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000201', 'letan1', '123456', 'LeTan', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000000202', 'letan2', '123456', 'LeTan', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001001', 'bn1', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001002', 'bn2', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001003', 'bn3', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001004', 'bn4', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001005', 'bn5', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001006', 'bn6', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001007', 'bn7', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001008', 'bn8', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001009', 'bn9', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001010', 'bn10', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001011', 'bn11', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001012', 'bn12', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001013', 'bn13', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001014', 'bn14', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001015', 'bn15', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001016', 'bn16', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001017', 'bn17', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001018', 'bn18', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001019', 'bn19', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001020', 'bn20', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001021', 'bn21', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001022', 'bn22', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001023', 'bn23', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001024', 'bn24', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001025', 'bn25', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001026', 'bn26', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001027', 'bn27', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001028', 'bn28', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001029', 'bn29', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001030', 'bn30', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001031', 'bn31', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001032', 'bn32', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001033', 'bn33', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001034', 'bn34', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001035', 'bn35', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001036', 'bn36', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001037', 'bn37', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001038', 'bn38', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001039', 'bn39', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001040', 'bn40', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001041', 'bn41', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001042', 'bn42', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001043', 'bn43', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001044', 'bn44', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001045', 'bn45', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001046', 'bn46', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001047', 'bn47', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001048', 'bn48', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001049', 'bn49', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
-('00000000-0000-0000-0000-000000001050', 'bn50', '123456', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00');
+('00000000-0000-0000-0000-000000000001', 'admin', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'Admin', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000000101', 'bs1', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000000102', 'bs2', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000000103', 'bs3', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000000104', 'bs4', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000000105', 'bs5', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'BacSi', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001001', 'bn1', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001002', 'bn2', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001003', 'bn3', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001004', 'bn4', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001005', 'bn5', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001006', 'bn6', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001007', 'bn7', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001008', 'bn8', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001009', 'bn9', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001010', 'bn10', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001011', 'bn11', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001012', 'bn12', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001013', 'bn13', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001014', 'bn14', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001015', 'bn15', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001016', 'bn16', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001017', 'bn17', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001018', 'bn18', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001019', 'bn19', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001020', 'bn20', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001021', 'bn21', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001022', 'bn22', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001023', 'bn23', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001024', 'bn24', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001025', 'bn25', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001026', 'bn26', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001027', 'bn27', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001028', 'bn28', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001029', 'bn29', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001030', 'bn30', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001031', 'bn31', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001032', 'bn32', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001033', 'bn33', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001034', 'bn34', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001035', 'bn35', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001036', 'bn36', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001037', 'bn37', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001038', 'bn38', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001039', 'bn39', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001040', 'bn40', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001041', 'bn41', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001042', 'bn42', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001043', 'bn43', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001044', 'bn44', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001045', 'bn45', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001046', 'bn46', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001047', 'bn47', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001048', 'bn48', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001049', 'bn49', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
+('00000000-0000-0000-0000-000000001050', 'bn50', '$2a$10$UryyYyn.Pf/mhB.T5KLuFOXb/Quo56mC5xmkpmzy7q/lhSa0jGF.e', 'NguoiDung', 'Active', '2026-01-01 08:00:00', '2026-01-01 08:00:00');
 INSERT INTO quan_ly (id_quan_ly, id_tai_khoan, ho_ten, so_dien_thoai, email) VALUES
 (1, '00000000-0000-0000-0000-000000000001', 'Quan tri vien he thong', '0900000000', 'admin@qlphongkham.local');
 INSERT INTO nhat_ky_hoat_dong (id_nhat_ky_hoat_dong, id_tai_khoan, hanh_dong, loai_doi_tuong, doi_tuong_id, du_lieu_cu, du_lieu_moi, thoi_gian) VALUES
@@ -608,8 +705,6 @@ INSERT INTO nhat_ky_hoat_dong (id_nhat_ky_hoat_dong, id_tai_khoan, hanh_dong, lo
 (4, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000000103', NULL, '{"tenDangNhap": "bs3", "vaiTro": "BacSi", "trangThai": "Active"}', '2026-01-01 08:04:00'),
 (5, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000000104', NULL, '{"tenDangNhap": "bs4", "vaiTro": "BacSi", "trangThai": "Active"}', '2026-01-01 08:05:00'),
 (6, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000000105', NULL, '{"tenDangNhap": "bs5", "vaiTro": "BacSi", "trangThai": "Active"}', '2026-01-01 08:06:00'),
-(7, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000000201', NULL, '{"tenDangNhap": "letan1", "vaiTro": "LeTan", "trangThai": "Active"}', '2026-01-01 08:07:00'),
-(8, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000000202', NULL, '{"tenDangNhap": "letan2", "vaiTro": "LeTan", "trangThai": "Active"}', '2026-01-01 08:08:00'),
 (9, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000001001', NULL, '{"tenDangNhap": "bn1", "vaiTro": "NguoiDung", "trangThai": "Active"}', '2026-01-01 08:09:00'),
 (10, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000001002', NULL, '{"tenDangNhap": "bn2", "vaiTro": "NguoiDung", "trangThai": "Active"}', '2026-01-01 08:10:00'),
 (11, '00000000-0000-0000-0000-000000000001', 'TAO_TAI_KHOAN', 'TaiKhoan', '00000000-0000-0000-0000-000000001003', NULL, '{"tenDangNhap": "bn3", "vaiTro": "NguoiDung", "trangThai": "Active"}', '2026-01-01 08:11:00'),
@@ -888,247 +983,251 @@ INSERT INTO tien_su_benh (id_tien_su_benh, id_benh_nhan, loai_tien_su, mo_ta, ng
 (49, 49, 'Benh nen', 'Tang huyet ap', NULL, NULL, '2026-01-01 08:00:00'),
 (50, 50, 'Di ung', 'Di ung', NULL, NULL, '2026-01-01 08:00:00');
 INSERT INTO lich_hen (id_lich_hen, id_benh_nhan, id_bac_si, ngay_hen, gio_hen, ly_do_kham, trang_thai, nguon_dat_lich, ghi_chu, ly_do_huy, thoi_gian_huy, thoi_gian_check_in, thoi_gian_bat_dau_kham, thoi_gian_ket_thuc_kham, ngay_tao, ngay_cap_nhat) VALUES
-(1, 12, 3, '2026-02-15', '10:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 10:15:00', '2026-02-15 10:30:00', '2026-02-15 11:00:00', '2026-02-08 10:30:00', '2026-02-15 11:00:00'),
-(2, 8, 1, '2026-01-07', '09:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-07 09:15:00', '2026-01-07 09:30:00', '2026-01-07 10:00:00', '2025-12-31 09:30:00', '2026-01-07 10:00:00'),
-(3, 38, 1, '2026-03-02', '14:30:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-02 14:15:00', '2026-03-02 14:30:00', '2026-03-02 15:00:00', '2026-02-23 14:30:00', '2026-03-02 15:00:00'),
-(4, 3, 5, '2026-02-27', '15:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 14:45:00', '2026-02-27 15:00:00', '2026-02-27 15:30:00', '2026-02-20 15:00:00', '2026-02-27 15:30:00'),
-(5, 31, 4, '2026-02-08', '14:00:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-08 13:45:00', '2026-02-08 14:00:00', '2026-02-08 14:30:00', '2026-02-01 14:00:00', '2026-02-08 14:30:00'),
-(6, 29, 1, '2026-02-24', '08:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-17 08:30:00', '2026-02-17 08:30:00'),
-(7, 9, 3, '2026-01-11', '12:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 11:45:00', '2026-01-11 12:00:00', '2026-01-11 12:30:00', '2026-01-04 12:00:00', '2026-01-11 12:30:00'),
-(8, 39, 5, '2026-03-21', '16:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-21 16:15:00', '2026-03-21 16:30:00', '2026-03-21 17:00:00', '2026-03-14 16:30:00', '2026-03-21 17:00:00'),
-(9, 45, 1, '2026-02-07', '14:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 14:15:00', '2026-02-07 14:30:00', '2026-02-07 15:00:00', '2026-01-31 14:30:00', '2026-02-07 15:00:00'),
-(10, 29, 2, '2026-04-20', '15:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-20 14:45:00', '2026-04-20 15:00:00', '2026-04-20 15:30:00', '2026-04-13 15:00:00', '2026-04-20 15:30:00'),
-(11, 27, 1, '2026-02-22', '12:30:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-22 12:15:00', '2026-02-22 12:30:00', '2026-02-22 13:00:00', '2026-02-15 12:30:00', '2026-02-22 13:00:00'),
-(12, 17, 3, '2026-02-10', '13:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-03 13:30:00', '2026-02-03 13:30:00'),
-(13, 6, 1, '2026-01-20', '14:00:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-20 13:45:00', '2026-01-20 14:00:00', '2026-01-20 14:30:00', '2026-01-13 14:00:00', '2026-01-20 14:30:00'),
-(14, 9, 5, '2026-02-25', '08:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-18 08:30:00', '2026-02-18 08:30:00'),
-(15, 8, 4, '2026-01-08', '16:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-01 16:30:00', '2026-01-01 16:30:00'),
-(16, 39, 3, '2026-02-15', '13:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 12:45:00', '2026-02-15 13:00:00', '2026-02-15 13:30:00', '2026-02-08 13:00:00', '2026-02-15 13:30:00'),
-(17, 43, 4, '2026-02-15', '08:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 07:45:00', '2026-02-15 08:00:00', '2026-02-15 08:30:00', '2026-02-08 08:00:00', '2026-02-15 08:30:00'),
+(1, 12, 3, '2026-02-15', '10:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 10:15:00', '2026-02-15 10:30:00', '2026-02-15 11:00:00', '2026-02-08 10:30:00', '2026-02-15 11:00:00'),
+(2, 8, 1, '2026-01-07', '09:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-07 09:15:00', '2026-01-07 09:30:00', '2026-01-07 10:00:00', '2025-12-31 09:30:00', '2026-01-07 10:00:00'),
+(3, 38, 1, '2026-03-02', '14:30:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-02 14:15:00', '2026-03-02 14:30:00', '2026-03-02 15:00:00', '2026-02-23 14:30:00', '2026-03-02 15:00:00'),
+(4, 3, 5, '2026-02-27', '15:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 14:45:00', '2026-02-27 15:00:00', '2026-02-27 15:30:00', '2026-02-20 15:00:00', '2026-02-27 15:30:00'),
+(5, 31, 4, '2026-02-08', '14:00:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-08 13:45:00', '2026-02-08 14:00:00', '2026-02-08 14:30:00', '2026-02-01 14:00:00', '2026-02-08 14:30:00'),
+(6, 29, 1, '2026-02-24', '08:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-17 08:30:00', '2026-02-17 08:30:00'),
+(7, 9, 3, '2026-01-11', '12:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 11:45:00', '2026-01-11 12:00:00', '2026-01-11 12:30:00', '2026-01-04 12:00:00', '2026-01-11 12:30:00'),
+(8, 39, 5, '2026-03-21', '16:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-21 16:15:00', '2026-03-21 16:30:00', '2026-03-21 17:00:00', '2026-03-14 16:30:00', '2026-03-21 17:00:00'),
+(9, 45, 1, '2026-02-07', '14:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 14:15:00', '2026-02-07 14:30:00', '2026-02-07 15:00:00', '2026-01-31 14:30:00', '2026-02-07 15:00:00'),
+(10, 29, 2, '2026-04-20', '15:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-20 14:45:00', '2026-04-20 15:00:00', '2026-04-20 15:30:00', '2026-04-13 15:00:00', '2026-04-20 15:30:00'),
+(11, 27, 1, '2026-02-22', '12:30:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-22 12:15:00', '2026-02-22 12:30:00', '2026-02-22 13:00:00', '2026-02-15 12:30:00', '2026-02-22 13:00:00'),
+(12, 17, 3, '2026-02-10', '13:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-03 13:30:00', '2026-02-03 13:30:00'),
+(13, 6, 1, '2026-01-20', '14:00:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-20 13:45:00', '2026-01-20 14:00:00', '2026-01-20 14:30:00', '2026-01-13 14:00:00', '2026-01-20 14:30:00'),
+(14, 9, 5, '2026-02-25', '08:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-18 08:30:00', '2026-02-18 08:30:00'),
+(15, 8, 4, '2026-01-08', '16:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-01 16:30:00', '2026-01-01 16:30:00'),
+(16, 39, 3, '2026-02-15', '13:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 12:45:00', '2026-02-15 13:00:00', '2026-02-15 13:30:00', '2026-02-08 13:00:00', '2026-02-15 13:30:00'),
+(17, 43, 4, '2026-02-15', '08:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 07:45:00', '2026-02-15 08:00:00', '2026-02-15 08:30:00', '2026-02-08 08:00:00', '2026-02-15 08:30:00'),
 (18, 36, 3, '2026-01-29', '08:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-01-28 08:30:00', NULL, NULL, NULL, '2026-01-22 08:30:00', '2026-01-28 08:30:00'),
-(19, 28, 5, '2026-01-15', '11:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-08 11:00:00', '2026-01-08 11:00:00'),
-(20, 43, 3, '2026-04-09', '16:00:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-09 15:45:00', '2026-04-09 16:00:00', '2026-04-09 16:30:00', '2026-04-02 16:00:00', '2026-04-09 16:30:00'),
-(21, 49, 3, '2026-01-04', '09:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-28 09:30:00', '2025-12-28 09:30:00'),
-(22, 10, 5, '2026-02-13', '12:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-13 11:45:00', '2026-02-13 12:00:00', '2026-02-13 12:30:00', '2026-02-06 12:00:00', '2026-02-13 12:30:00'),
-(23, 48, 1, '2026-03-26', '13:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-26 12:45:00', '2026-03-26 13:00:00', '2026-03-26 13:30:00', '2026-03-19 13:00:00', '2026-03-26 13:30:00'),
-(24, 27, 4, '2026-01-12', '15:00:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-12 14:45:00', '2026-01-12 15:00:00', '2026-01-12 15:30:00', '2026-01-05 15:00:00', '2026-01-12 15:30:00'),
-(25, 47, 3, '2026-02-13', '09:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-13 09:15:00', '2026-02-13 09:30:00', '2026-02-13 10:00:00', '2026-02-06 09:30:00', '2026-02-13 10:00:00'),
+(19, 28, 5, '2026-01-15', '11:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-08 11:00:00', '2026-01-08 11:00:00'),
+(20, 43, 3, '2026-04-09', '16:00:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-09 15:45:00', '2026-04-09 16:00:00', '2026-04-09 16:30:00', '2026-04-02 16:00:00', '2026-04-09 16:30:00'),
+(21, 49, 3, '2026-01-04', '09:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2025-12-28 09:30:00', '2025-12-28 09:30:00'),
+(22, 10, 5, '2026-02-13', '12:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-13 11:45:00', '2026-02-13 12:00:00', '2026-02-13 12:30:00', '2026-02-06 12:00:00', '2026-02-13 12:30:00'),
+(23, 48, 1, '2026-03-26', '13:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-26 12:45:00', '2026-03-26 13:00:00', '2026-03-26 13:30:00', '2026-03-19 13:00:00', '2026-03-26 13:30:00'),
+(24, 27, 4, '2026-01-12', '15:00:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-12 14:45:00', '2026-01-12 15:00:00', '2026-01-12 15:30:00', '2026-01-05 15:00:00', '2026-01-12 15:30:00'),
+(25, 47, 3, '2026-02-13', '09:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-13 09:15:00', '2026-02-13 09:30:00', '2026-02-13 10:00:00', '2026-02-06 09:30:00', '2026-02-13 10:00:00'),
 (26, 4, 2, '2026-04-10', '16:00:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-04-09 16:00:00', NULL, NULL, NULL, '2026-04-03 16:00:00', '2026-04-09 16:00:00'),
-(27, 6, 3, '2026-01-21', '16:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-14 16:00:00', '2026-01-14 16:00:00'),
-(28, 29, 4, '2026-02-26', '13:30:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-26 13:15:00', '2026-02-26 13:30:00', '2026-02-26 14:00:00', '2026-02-19 13:30:00', '2026-02-26 14:00:00'),
-(29, 28, 1, '2026-02-04', '10:00:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-04 09:45:00', '2026-02-04 10:00:00', '2026-02-04 10:30:00', '2026-01-28 10:00:00', '2026-02-04 10:30:00'),
-(30, 43, 3, '2026-02-06', '16:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-06 16:15:00', '2026-02-06 16:30:00', '2026-02-06 17:00:00', '2026-01-30 16:30:00', '2026-02-06 17:00:00'),
-(31, 4, 1, '2026-01-06', '10:30:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-06 10:15:00', '2026-01-06 10:30:00', '2026-01-06 11:00:00', '2025-12-30 10:30:00', '2026-01-06 11:00:00'),
-(32, 9, 3, '2026-01-27', '11:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-20 11:00:00', '2026-01-20 11:00:00'),
-(33, 32, 4, '2026-02-07', '12:00:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 11:45:00', '2026-02-07 12:00:00', '2026-02-07 12:30:00', '2026-01-31 12:00:00', '2026-02-07 12:30:00'),
-(34, 46, 2, '2026-01-23', '09:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-23 09:15:00', '2026-01-23 09:30:00', '2026-01-23 10:00:00', '2026-01-16 09:30:00', '2026-01-23 10:00:00'),
-(35, 26, 1, '2026-03-06', '15:30:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-06 15:15:00', '2026-03-06 15:30:00', '2026-03-06 16:00:00', '2026-02-27 15:30:00', '2026-03-06 16:00:00'),
+(27, 6, 3, '2026-01-21', '16:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-14 16:00:00', '2026-01-14 16:00:00'),
+(28, 29, 4, '2026-02-26', '13:30:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-26 13:15:00', '2026-02-26 13:30:00', '2026-02-26 14:00:00', '2026-02-19 13:30:00', '2026-02-26 14:00:00'),
+(29, 28, 1, '2026-02-04', '10:00:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-04 09:45:00', '2026-02-04 10:00:00', '2026-02-04 10:30:00', '2026-01-28 10:00:00', '2026-02-04 10:30:00'),
+(30, 43, 3, '2026-02-06', '16:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-06 16:15:00', '2026-02-06 16:30:00', '2026-02-06 17:00:00', '2026-01-30 16:30:00', '2026-02-06 17:00:00'),
+(31, 4, 1, '2026-01-06', '10:30:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-06 10:15:00', '2026-01-06 10:30:00', '2026-01-06 11:00:00', '2025-12-30 10:30:00', '2026-01-06 11:00:00'),
+(32, 9, 3, '2026-01-27', '11:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-20 11:00:00', '2026-01-20 11:00:00'),
+(33, 32, 4, '2026-02-07', '12:00:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 11:45:00', '2026-02-07 12:00:00', '2026-02-07 12:30:00', '2026-01-31 12:00:00', '2026-02-07 12:30:00'),
+(34, 46, 2, '2026-01-23', '09:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-23 09:15:00', '2026-01-23 09:30:00', '2026-01-23 10:00:00', '2026-01-16 09:30:00', '2026-01-23 10:00:00'),
+(35, 26, 1, '2026-03-06', '15:30:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-06 15:15:00', '2026-03-06 15:30:00', '2026-03-06 16:00:00', '2026-02-27 15:30:00', '2026-03-06 16:00:00'),
 (36, 5, 3, '2026-02-25', '07:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-02-24 07:30:00', NULL, NULL, NULL, '2026-02-18 07:30:00', '2026-02-24 07:30:00'),
-(37, 41, 4, '2026-03-15', '13:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-08 13:30:00', '2026-03-08 13:30:00'),
-(38, 21, 2, '2026-02-07', '08:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 08:15:00', '2026-02-07 08:30:00', '2026-02-07 09:00:00', '2026-01-31 08:30:00', '2026-02-07 09:00:00'),
+(37, 41, 4, '2026-03-15', '13:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-08 13:30:00', '2026-03-08 13:30:00'),
+(38, 21, 2, '2026-02-07', '08:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-07 08:15:00', '2026-02-07 08:30:00', '2026-02-07 09:00:00', '2026-01-31 08:30:00', '2026-02-07 09:00:00'),
 (39, 45, 3, '2026-04-13', '16:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-04-12 16:30:00', NULL, NULL, NULL, '2026-04-06 16:30:00', '2026-04-12 16:30:00'),
-(40, 28, 5, '2026-01-12', '13:00:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-12 12:45:00', '2026-01-12 13:00:00', '2026-01-12 13:30:00', '2026-01-05 13:00:00', '2026-01-12 13:30:00'),
-(41, 20, 3, '2026-02-21', '15:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-21 14:45:00', '2026-02-21 15:00:00', '2026-02-21 15:30:00', '2026-02-14 15:00:00', '2026-02-21 15:30:00'),
-(42, 33, 1, '2026-01-29', '12:00:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-29 11:45:00', '2026-01-29 12:00:00', '2026-01-29 12:30:00', '2026-01-22 12:00:00', '2026-01-29 12:30:00'),
+(40, 28, 5, '2026-01-12', '13:00:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-12 12:45:00', '2026-01-12 13:00:00', '2026-01-12 13:30:00', '2026-01-05 13:00:00', '2026-01-12 13:30:00'),
+(41, 20, 3, '2026-02-21', '15:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-21 14:45:00', '2026-02-21 15:00:00', '2026-02-21 15:30:00', '2026-02-14 15:00:00', '2026-02-21 15:30:00'),
+(42, 33, 1, '2026-01-29', '12:00:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-29 11:45:00', '2026-01-29 12:00:00', '2026-01-29 12:30:00', '2026-01-22 12:00:00', '2026-01-29 12:30:00'),
 (43, 50, 3, '2026-03-09', '15:00:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-03-08 15:00:00', NULL, NULL, NULL, '2026-03-02 15:00:00', '2026-03-08 15:00:00'),
-(44, 10, 3, '2026-02-14', '09:00:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-14 08:45:00', '2026-02-14 09:00:00', '2026-02-14 09:30:00', '2026-02-07 09:00:00', '2026-02-14 09:30:00'),
-(45, 49, 1, '2026-01-26', '09:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-19 09:00:00', '2026-01-19 09:00:00'),
-(46, 37, 5, '2026-01-23', '14:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-16 14:30:00', '2026-01-16 14:30:00'),
+(44, 10, 3, '2026-02-14', '09:00:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-14 08:45:00', '2026-02-14 09:00:00', '2026-02-14 09:30:00', '2026-02-07 09:00:00', '2026-02-14 09:30:00'),
+(45, 49, 1, '2026-01-26', '09:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-19 09:00:00', '2026-01-19 09:00:00'),
+(46, 37, 5, '2026-01-23', '14:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-16 14:30:00', '2026-01-16 14:30:00'),
 (47, 41, 3, '2026-02-27', '16:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-02-26 16:30:00', NULL, NULL, NULL, '2026-02-20 16:30:00', '2026-02-26 16:30:00'),
-(48, 29, 3, '2026-01-20', '14:00:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-20 13:45:00', '2026-01-20 14:00:00', '2026-01-20 14:30:00', '2026-01-13 14:00:00', '2026-01-20 14:30:00'),
-(49, 33, 1, '2026-04-12', '11:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 10:45:00', '2026-04-12 11:00:00', '2026-04-12 11:30:00', '2026-04-05 11:00:00', '2026-04-12 11:30:00'),
-(50, 4, 3, '2026-02-09', '14:30:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-09 14:15:00', '2026-02-09 14:30:00', '2026-02-09 15:00:00', '2026-02-02 14:30:00', '2026-02-09 15:00:00'),
-(51, 6, 5, '2026-04-17', '11:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-10 11:00:00', '2026-04-10 11:00:00'),
-(52, 38, 5, '2026-03-18', '15:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-18 15:15:00', '2026-03-18 15:30:00', '2026-03-18 16:00:00', '2026-03-11 15:30:00', '2026-03-18 16:00:00'),
+(48, 29, 3, '2026-01-20', '14:00:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-20 13:45:00', '2026-01-20 14:00:00', '2026-01-20 14:30:00', '2026-01-13 14:00:00', '2026-01-20 14:30:00'),
+(49, 33, 1, '2026-04-12', '11:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 10:45:00', '2026-04-12 11:00:00', '2026-04-12 11:30:00', '2026-04-05 11:00:00', '2026-04-12 11:30:00'),
+(50, 4, 3, '2026-02-09', '14:30:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-09 14:15:00', '2026-02-09 14:30:00', '2026-02-09 15:00:00', '2026-02-02 14:30:00', '2026-02-09 15:00:00'),
+(51, 6, 5, '2026-04-17', '11:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-10 11:00:00', '2026-04-10 11:00:00'),
+(52, 38, 5, '2026-03-18', '15:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-18 15:15:00', '2026-03-18 15:30:00', '2026-03-18 16:00:00', '2026-03-11 15:30:00', '2026-03-18 16:00:00'),
 (53, 37, 2, '2026-04-12', '07:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-04-11 07:30:00', NULL, NULL, NULL, '2026-04-05 07:30:00', '2026-04-11 07:30:00'),
-(54, 10, 1, '2026-02-11', '16:30:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-11 16:15:00', '2026-02-11 16:30:00', '2026-02-11 17:00:00', '2026-02-04 16:30:00', '2026-02-11 17:00:00'),
-(55, 6, 5, '2026-02-27', '08:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-20 08:30:00', '2026-02-20 08:30:00'),
-(56, 46, 4, '2026-03-24', '09:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-24 08:45:00', '2026-03-24 09:00:00', '2026-03-24 09:30:00', '2026-03-17 09:00:00', '2026-03-24 09:30:00'),
-(57, 24, 3, '2026-02-26', '15:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-26 14:45:00', '2026-02-26 15:00:00', '2026-02-26 15:30:00', '2026-02-19 15:00:00', '2026-02-26 15:30:00'),
-(58, 39, 1, '2026-02-19', '13:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-12 13:30:00', '2026-02-12 13:30:00'),
-(59, 7, 5, '2026-04-12', '12:00:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 11:45:00', '2026-04-12 12:00:00', '2026-04-12 12:30:00', '2026-04-05 12:00:00', '2026-04-12 12:30:00'),
-(60, 47, 5, '2026-03-28', '13:30:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-28 13:15:00', '2026-03-28 13:30:00', '2026-03-28 14:00:00', '2026-03-21 13:30:00', '2026-03-28 14:00:00'),
-(61, 38, 2, '2026-04-22', '09:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-22 09:15:00', '2026-04-22 09:30:00', '2026-04-22 10:00:00', '2026-04-15 09:30:00', '2026-04-22 10:00:00'),
-(62, 39, 1, '2026-02-14', '11:30:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-14 11:15:00', '2026-02-14 11:30:00', '2026-02-14 12:00:00', '2026-02-07 11:30:00', '2026-02-14 12:00:00'),
-(63, 22, 2, '2026-02-09', '15:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-02 15:30:00', '2026-02-02 15:30:00'),
-(64, 43, 4, '2026-03-27', '15:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-20 15:00:00', '2026-03-20 15:00:00'),
-(65, 20, 2, '2026-03-07', '12:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-07 11:45:00', '2026-03-07 12:00:00', '2026-03-07 12:30:00', '2026-02-28 12:00:00', '2026-03-07 12:30:00'),
-(66, 15, 2, '2026-01-28', '12:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-28 12:15:00', '2026-01-28 12:30:00', '2026-01-28 13:00:00', '2026-01-21 12:30:00', '2026-01-28 13:00:00'),
+(54, 10, 1, '2026-02-11', '16:30:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-11 16:15:00', '2026-02-11 16:30:00', '2026-02-11 17:00:00', '2026-02-04 16:30:00', '2026-02-11 17:00:00'),
+(55, 6, 5, '2026-02-27', '08:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-20 08:30:00', '2026-02-20 08:30:00'),
+(56, 46, 4, '2026-03-24', '09:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-24 08:45:00', '2026-03-24 09:00:00', '2026-03-24 09:30:00', '2026-03-17 09:00:00', '2026-03-24 09:30:00'),
+(57, 24, 3, '2026-02-26', '15:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-26 14:45:00', '2026-02-26 15:00:00', '2026-02-26 15:30:00', '2026-02-19 15:00:00', '2026-02-26 15:30:00'),
+(58, 39, 1, '2026-02-19', '13:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-12 13:30:00', '2026-02-12 13:30:00'),
+(59, 7, 5, '2026-04-12', '12:00:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 11:45:00', '2026-04-12 12:00:00', '2026-04-12 12:30:00', '2026-04-05 12:00:00', '2026-04-12 12:30:00'),
+(60, 47, 5, '2026-03-28', '13:30:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-28 13:15:00', '2026-03-28 13:30:00', '2026-03-28 14:00:00', '2026-03-21 13:30:00', '2026-03-28 14:00:00'),
+(61, 38, 2, '2026-04-22', '09:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-22 09:15:00', '2026-04-22 09:30:00', '2026-04-22 10:00:00', '2026-04-15 09:30:00', '2026-04-22 10:00:00'),
+(62, 39, 1, '2026-02-14', '11:30:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-14 11:15:00', '2026-02-14 11:30:00', '2026-02-14 12:00:00', '2026-02-07 11:30:00', '2026-02-14 12:00:00'),
+(63, 22, 2, '2026-02-09', '15:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-02 15:30:00', '2026-02-02 15:30:00'),
+(64, 43, 4, '2026-03-27', '15:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-20 15:00:00', '2026-03-20 15:00:00'),
+(65, 20, 2, '2026-03-07', '12:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-07 11:45:00', '2026-03-07 12:00:00', '2026-03-07 12:30:00', '2026-02-28 12:00:00', '2026-03-07 12:30:00'),
+(66, 15, 2, '2026-01-28', '12:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-28 12:15:00', '2026-01-28 12:30:00', '2026-01-28 13:00:00', '2026-01-21 12:30:00', '2026-01-28 13:00:00'),
 (67, 7, 5, '2026-01-20', '08:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-01-19 08:30:00', NULL, NULL, NULL, '2026-01-13 08:30:00', '2026-01-19 08:30:00'),
-(68, 22, 5, '2026-04-09', '15:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-02 15:00:00', '2026-04-02 15:00:00'),
-(69, 11, 2, '2026-01-17', '16:30:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-17 16:15:00', '2026-01-17 16:30:00', '2026-01-17 17:00:00', '2026-01-10 16:30:00', '2026-01-17 17:00:00'),
-(70, 29, 1, '2026-04-17', '16:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-10 16:00:00', '2026-04-10 16:00:00'),
-(71, 40, 3, '2026-02-22', '12:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-22 11:45:00', '2026-02-22 12:00:00', '2026-02-22 12:30:00', '2026-02-15 12:00:00', '2026-02-22 12:30:00'),
-(72, 16, 3, '2026-04-07', '14:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-07 13:45:00', '2026-04-07 14:00:00', '2026-04-07 14:30:00', '2026-03-31 14:00:00', '2026-04-07 14:30:00'),
-(73, 44, 5, '2026-04-14', '14:00:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-14 13:45:00', '2026-04-14 14:00:00', '2026-04-14 14:30:00', '2026-04-07 14:00:00', '2026-04-14 14:30:00'),
-(74, 25, 5, '2026-02-26', '14:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-19 14:30:00', '2026-02-19 14:30:00'),
-(75, 13, 5, '2026-03-09', '13:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-02 13:00:00', '2026-03-02 13:00:00'),
-(76, 31, 3, '2026-01-18', '11:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-11 11:00:00', '2026-01-11 11:00:00'),
-(77, 6, 2, '2026-03-12', '08:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-12 07:45:00', '2026-03-12 08:00:00', '2026-03-12 08:30:00', '2026-03-05 08:00:00', '2026-03-12 08:30:00'),
+(68, 22, 5, '2026-04-09', '15:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-02 15:00:00', '2026-04-02 15:00:00'),
+(69, 11, 2, '2026-01-17', '16:30:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-17 16:15:00', '2026-01-17 16:30:00', '2026-01-17 17:00:00', '2026-01-10 16:30:00', '2026-01-17 17:00:00'),
+(70, 29, 1, '2026-04-17', '16:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-10 16:00:00', '2026-04-10 16:00:00'),
+(71, 40, 3, '2026-02-22', '12:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-22 11:45:00', '2026-02-22 12:00:00', '2026-02-22 12:30:00', '2026-02-15 12:00:00', '2026-02-22 12:30:00'),
+(72, 16, 3, '2026-04-07', '14:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-07 13:45:00', '2026-04-07 14:00:00', '2026-04-07 14:30:00', '2026-03-31 14:00:00', '2026-04-07 14:30:00'),
+(73, 44, 5, '2026-04-14', '14:00:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-14 13:45:00', '2026-04-14 14:00:00', '2026-04-14 14:30:00', '2026-04-07 14:00:00', '2026-04-14 14:30:00'),
+(74, 25, 5, '2026-02-26', '14:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-19 14:30:00', '2026-02-19 14:30:00'),
+(75, 13, 5, '2026-03-09', '13:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-02 13:00:00', '2026-03-02 13:00:00'),
+(76, 31, 3, '2026-01-18', '11:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-11 11:00:00', '2026-01-11 11:00:00'),
+(77, 6, 2, '2026-03-12', '08:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-12 07:45:00', '2026-03-12 08:00:00', '2026-03-12 08:30:00', '2026-03-05 08:00:00', '2026-03-12 08:30:00'),
 (78, 28, 1, '2026-02-04', '14:00:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-02-03 14:00:00', NULL, NULL, NULL, '2026-01-28 14:00:00', '2026-02-03 14:00:00'),
 (79, 2, 4, '2026-01-29', '14:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-01-28 14:30:00', NULL, NULL, NULL, '2026-01-22 14:30:00', '2026-01-28 14:30:00'),
-(80, 25, 1, '2026-01-07', '13:30:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-07 13:15:00', '2026-01-07 13:30:00', '2026-01-07 14:00:00', '2025-12-31 13:30:00', '2026-01-07 14:00:00'),
-(81, 7, 3, '2026-02-17', '10:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-17 09:45:00', '2026-02-17 10:00:00', '2026-02-17 10:30:00', '2026-02-10 10:00:00', '2026-02-17 10:30:00'),
-(82, 19, 4, '2026-04-12', '09:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 08:45:00', '2026-04-12 09:00:00', '2026-04-12 09:30:00', '2026-04-05 09:00:00', '2026-04-12 09:30:00'),
-(83, 40, 1, '2026-03-31', '09:30:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-31 09:15:00', '2026-03-31 09:30:00', '2026-03-31 10:00:00', '2026-03-24 09:30:00', '2026-03-31 10:00:00'),
-(84, 10, 5, '2026-01-11', '07:30:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 07:15:00', '2026-01-11 07:30:00', '2026-01-11 08:00:00', '2026-01-04 07:30:00', '2026-01-11 08:00:00'),
-(85, 50, 3, '2026-04-04', '16:30:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-04 16:15:00', '2026-04-04 16:30:00', '2026-04-04 17:00:00', '2026-03-28 16:30:00', '2026-04-04 17:00:00'),
-(86, 16, 4, '2026-01-31', '11:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-31 10:45:00', '2026-01-31 11:00:00', '2026-01-31 11:30:00', '2026-01-24 11:00:00', '2026-01-31 11:30:00'),
-(87, 8, 4, '2026-03-23', '16:30:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-23 16:15:00', '2026-03-23 16:30:00', '2026-03-23 17:00:00', '2026-03-16 16:30:00', '2026-03-23 17:00:00'),
-(88, 33, 5, '2026-03-18', '15:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-11 15:00:00', '2026-03-11 15:00:00'),
-(89, 1, 5, '2026-01-31', '09:30:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-31 09:15:00', '2026-01-31 09:30:00', '2026-01-31 10:00:00', '2026-01-24 09:30:00', '2026-01-31 10:00:00'),
-(90, 43, 1, '2026-02-15', '10:30:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 10:15:00', '2026-02-15 10:30:00', '2026-02-15 11:00:00', '2026-02-08 10:30:00', '2026-02-15 11:00:00'),
-(91, 35, 5, '2026-03-09', '12:00:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-09 11:45:00', '2026-03-09 12:00:00', '2026-03-09 12:30:00', '2026-03-02 12:00:00', '2026-03-09 12:30:00'),
-(92, 31, 1, '2026-04-11', '15:00:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-11 14:45:00', '2026-04-11 15:00:00', '2026-04-11 15:30:00', '2026-04-04 15:00:00', '2026-04-11 15:30:00'),
-(93, 48, 1, '2026-03-23', '13:30:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-23 13:15:00', '2026-03-23 13:30:00', '2026-03-23 14:00:00', '2026-03-16 13:30:00', '2026-03-23 14:00:00'),
-(94, 47, 1, '2026-02-15', '08:30:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 08:15:00', '2026-02-15 08:30:00', '2026-02-15 09:00:00', '2026-02-08 08:30:00', '2026-02-15 09:00:00'),
-(95, 3, 3, '2026-04-09', '16:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-09 16:15:00', '2026-04-09 16:30:00', '2026-04-09 17:00:00', '2026-04-02 16:30:00', '2026-04-09 17:00:00'),
+(80, 25, 1, '2026-01-07', '13:30:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-07 13:15:00', '2026-01-07 13:30:00', '2026-01-07 14:00:00', '2025-12-31 13:30:00', '2026-01-07 14:00:00'),
+(81, 7, 3, '2026-02-17', '10:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-17 09:45:00', '2026-02-17 10:00:00', '2026-02-17 10:30:00', '2026-02-10 10:00:00', '2026-02-17 10:30:00'),
+(82, 19, 4, '2026-04-12', '09:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 08:45:00', '2026-04-12 09:00:00', '2026-04-12 09:30:00', '2026-04-05 09:00:00', '2026-04-12 09:30:00'),
+(83, 40, 1, '2026-03-31', '09:30:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-31 09:15:00', '2026-03-31 09:30:00', '2026-03-31 10:00:00', '2026-03-24 09:30:00', '2026-03-31 10:00:00'),
+(84, 10, 5, '2026-01-11', '07:30:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 07:15:00', '2026-01-11 07:30:00', '2026-01-11 08:00:00', '2026-01-04 07:30:00', '2026-01-11 08:00:00'),
+(85, 50, 3, '2026-04-04', '16:30:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-04 16:15:00', '2026-04-04 16:30:00', '2026-04-04 17:00:00', '2026-03-28 16:30:00', '2026-04-04 17:00:00'),
+(86, 16, 4, '2026-01-31', '11:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-31 10:45:00', '2026-01-31 11:00:00', '2026-01-31 11:30:00', '2026-01-24 11:00:00', '2026-01-31 11:30:00'),
+(87, 8, 4, '2026-03-23', '16:30:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-23 16:15:00', '2026-03-23 16:30:00', '2026-03-23 17:00:00', '2026-03-16 16:30:00', '2026-03-23 17:00:00'),
+(88, 33, 5, '2026-03-18', '15:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-11 15:00:00', '2026-03-11 15:00:00'),
+(89, 1, 5, '2026-01-31', '09:30:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-31 09:15:00', '2026-01-31 09:30:00', '2026-01-31 10:00:00', '2026-01-24 09:30:00', '2026-01-31 10:00:00'),
+(90, 43, 1, '2026-02-15', '10:30:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 10:15:00', '2026-02-15 10:30:00', '2026-02-15 11:00:00', '2026-02-08 10:30:00', '2026-02-15 11:00:00'),
+(91, 35, 5, '2026-03-09', '12:00:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-09 11:45:00', '2026-03-09 12:00:00', '2026-03-09 12:30:00', '2026-03-02 12:00:00', '2026-03-09 12:30:00'),
+(92, 31, 1, '2026-04-11', '15:00:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-11 14:45:00', '2026-04-11 15:00:00', '2026-04-11 15:30:00', '2026-04-04 15:00:00', '2026-04-11 15:30:00'),
+(93, 48, 1, '2026-03-23', '13:30:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-23 13:15:00', '2026-03-23 13:30:00', '2026-03-23 14:00:00', '2026-03-16 13:30:00', '2026-03-23 14:00:00'),
+(94, 47, 1, '2026-02-15', '08:30:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-15 08:15:00', '2026-02-15 08:30:00', '2026-02-15 09:00:00', '2026-02-08 08:30:00', '2026-02-15 09:00:00'),
+(95, 3, 3, '2026-04-09', '16:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-09 16:15:00', '2026-04-09 16:30:00', '2026-04-09 17:00:00', '2026-04-02 16:30:00', '2026-04-09 17:00:00'),
 (96, 50, 4, '2026-03-11', '12:00:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-03-10 12:00:00', NULL, NULL, NULL, '2026-03-04 12:00:00', '2026-03-10 12:00:00'),
-(97, 9, 1, '2026-03-31', '14:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-24 14:00:00', '2026-03-24 14:00:00'),
-(98, 13, 1, '2026-04-02', '14:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-02 13:45:00', '2026-04-02 14:00:00', '2026-04-02 14:30:00', '2026-03-26 14:00:00', '2026-04-02 14:30:00'),
-(99, 20, 5, '2026-04-12', '10:00:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 09:45:00', '2026-04-12 10:00:00', '2026-04-12 10:30:00', '2026-04-05 10:00:00', '2026-04-12 10:30:00'),
-(100, 3, 2, '2026-02-20', '15:30:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-20 15:15:00', '2026-02-20 15:30:00', '2026-02-20 16:00:00', '2026-02-13 15:30:00', '2026-02-20 16:00:00'),
+(97, 9, 1, '2026-03-31', '14:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-03-24 14:00:00', '2026-03-24 14:00:00'),
+(98, 13, 1, '2026-04-02', '14:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-02 13:45:00', '2026-04-02 14:00:00', '2026-04-02 14:30:00', '2026-03-26 14:00:00', '2026-04-02 14:30:00'),
+(99, 20, 5, '2026-04-12', '10:00:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-12 09:45:00', '2026-04-12 10:00:00', '2026-04-12 10:30:00', '2026-04-05 10:00:00', '2026-04-12 10:30:00'),
+(100, 3, 2, '2026-02-20', '15:30:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-20 15:15:00', '2026-02-20 15:30:00', '2026-02-20 16:00:00', '2026-02-13 15:30:00', '2026-02-20 16:00:00'),
 (101, 42, 3, '2026-02-06', '12:00:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-02-05 12:00:00', NULL, NULL, NULL, '2026-01-30 12:00:00', '2026-02-05 12:00:00'),
-(102, 26, 4, '2026-02-04', '08:30:00', 'Dau dau, sot nhe', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-04 08:15:00', '2026-02-04 08:30:00', '2026-02-04 09:00:00', '2026-01-28 08:30:00', '2026-02-04 09:00:00'),
-(103, 45, 4, '2026-02-19', '12:00:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-19 11:45:00', '2026-02-19 12:00:00', '2026-02-19 12:30:00', '2026-02-12 12:00:00', '2026-02-19 12:30:00'),
-(104, 6, 4, '2026-02-17', '15:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-10 15:30:00', '2026-02-10 15:30:00'),
-(105, 19, 3, '2026-01-11', '13:00:00', 'Dau nguc, hoi hop', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 12:45:00', '2026-01-11 13:00:00', '2026-01-11 13:30:00', '2026-01-04 13:00:00', '2026-01-11 13:30:00'),
-(106, 19, 3, '2026-01-14', '08:30:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-07 08:30:00', '2026-01-07 08:30:00'),
-(107, 45, 4, '2026-02-27', '16:30:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 16:15:00', '2026-02-27 16:30:00', '2026-02-27 17:00:00', '2026-02-20 16:30:00', '2026-02-27 17:00:00'),
-(108, 23, 5, '2026-02-14', '14:00:00', 'Kham tong quat', 'Cho kham', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-07 14:00:00', '2026-02-07 14:00:00'),
-(109, 43, 4, '2026-02-25', '11:00:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-25 10:45:00', '2026-02-25 11:00:00', '2026-02-25 11:30:00', '2026-02-18 11:00:00', '2026-02-25 11:30:00'),
-(110, 10, 5, '2026-02-16', '15:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-16 14:45:00', '2026-02-16 15:00:00', '2026-02-16 15:30:00', '2026-02-09 15:00:00', '2026-02-16 15:30:00'),
-(111, 5, 2, '2026-03-28', '14:00:00', 'Dau khop, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-28 13:45:00', '2026-03-28 14:00:00', '2026-03-28 14:30:00', '2026-03-21 14:00:00', '2026-03-28 14:30:00'),
-(112, 37, 1, '2026-04-10', '12:30:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-10 12:15:00', '2026-04-10 12:30:00', '2026-04-10 13:00:00', '2026-04-03 12:30:00', '2026-04-10 13:00:00'),
-(113, 24, 4, '2026-03-19', '09:30:00', 'Ho, sot, met moi', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-19 09:15:00', '2026-03-19 09:30:00', '2026-03-19 10:00:00', '2026-03-12 09:30:00', '2026-03-19 10:00:00'),
-(114, 24, 4, '2026-04-08', '08:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-04-08 07:45:00', '2026-04-08 08:00:00', '2026-04-08 08:30:00', '2026-04-01 08:00:00', '2026-04-08 08:30:00'),
-(115, 2, 2, '2026-02-10', '11:00:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-10 10:45:00', '2026-02-10 11:00:00', '2026-02-10 11:30:00', '2026-02-03 11:00:00', '2026-02-10 11:30:00'),
+(102, 26, 4, '2026-02-04', '08:30:00', 'Dau dau, sot nhe', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-04 08:15:00', '2026-02-04 08:30:00', '2026-02-04 09:00:00', '2026-01-28 08:30:00', '2026-02-04 09:00:00'),
+(103, 45, 4, '2026-02-19', '12:00:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-19 11:45:00', '2026-02-19 12:00:00', '2026-02-19 12:30:00', '2026-02-12 12:00:00', '2026-02-19 12:30:00'),
+(104, 6, 4, '2026-02-17', '15:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-10 15:30:00', '2026-02-10 15:30:00'),
+(105, 19, 3, '2026-01-11', '13:00:00', 'Dau nguc, hoi hop', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-01-11 12:45:00', '2026-01-11 13:00:00', '2026-01-11 13:30:00', '2026-01-04 13:00:00', '2026-01-11 13:30:00'),
+(106, 19, 3, '2026-01-14', '08:30:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-07 08:30:00', '2026-01-07 08:30:00'),
+(107, 45, 4, '2026-02-27', '16:30:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 16:15:00', '2026-02-27 16:30:00', '2026-02-27 17:00:00', '2026-02-20 16:30:00', '2026-02-27 17:00:00'),
+(108, 23, 5, '2026-02-14', '14:00:00', 'Kham tong quat', 'Da xac nhan', 'Truc tuyen', NULL, NULL, NULL, NULL, NULL, NULL, '2026-02-07 14:00:00', '2026-02-07 14:00:00'),
+(109, 43, 4, '2026-02-25', '11:00:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-25 10:45:00', '2026-02-25 11:00:00', '2026-02-25 11:30:00', '2026-02-18 11:00:00', '2026-02-25 11:30:00'),
+(110, 10, 5, '2026-02-16', '15:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-16 14:45:00', '2026-02-16 15:00:00', '2026-02-16 15:30:00', '2026-02-09 15:00:00', '2026-02-16 15:30:00'),
+(111, 5, 2, '2026-03-28', '14:00:00', 'Dau khop, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-28 13:45:00', '2026-03-28 14:00:00', '2026-03-28 14:30:00', '2026-03-21 14:00:00', '2026-03-28 14:30:00'),
+(112, 37, 1, '2026-04-10', '12:30:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-10 12:15:00', '2026-04-10 12:30:00', '2026-04-10 13:00:00', '2026-04-03 12:30:00', '2026-04-10 13:00:00'),
+(113, 24, 4, '2026-03-19', '09:30:00', 'Ho, sot, met moi', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-19 09:15:00', '2026-03-19 09:30:00', '2026-03-19 10:00:00', '2026-03-12 09:30:00', '2026-03-19 10:00:00'),
+(114, 24, 4, '2026-04-08', '08:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-04-08 07:45:00', '2026-04-08 08:00:00', '2026-04-08 08:30:00', '2026-04-01 08:00:00', '2026-04-08 08:30:00'),
+(115, 2, 2, '2026-02-10', '11:00:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-10 10:45:00', '2026-02-10 11:00:00', '2026-02-10 11:30:00', '2026-02-03 11:00:00', '2026-02-10 11:30:00'),
 (116, 36, 1, '2026-03-05', '15:30:00', 'Kham tong quat', 'Huy', 'Truc tuyen', NULL, 'Benh nhan huy lich', '2026-03-04 15:30:00', NULL, NULL, NULL, '2026-02-26 15:30:00', '2026-03-04 15:30:00'),
-(117, 40, 3, '2026-02-03', '11:30:00', 'Kho tho, ho khan', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-03 11:15:00', '2026-02-03 11:30:00', '2026-02-03 12:00:00', '2026-01-27 11:30:00', '2026-02-03 12:00:00'),
-(118, 9, 1, '2026-03-30', '14:00:00', 'Noi man ngua', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-30 13:45:00', '2026-03-30 14:00:00', '2026-03-30 14:30:00', '2026-03-23 14:00:00', '2026-03-30 14:30:00'),
-(119, 44, 3, '2026-02-27', '09:30:00', 'Dau bung, buon non', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 09:15:00', '2026-02-27 09:30:00', '2026-02-27 10:00:00', '2026-02-20 09:30:00', '2026-02-27 10:00:00'),
-(120, 35, 3, '2026-03-27', '12:00:00', 'Dau hong, nghen mui', 'Da kham', 'Truc tuyen', NULL, NULL, NULL, '2026-03-27 11:45:00', '2026-03-27 12:00:00', '2026-03-27 12:30:00', '2026-03-20 12:00:00', '2026-03-27 12:30:00');
-INSERT INTO lich_su_lich_hen (id_lich_su_lich_hen, id_lich_hen, ngay_cu, gio_cu, ngay_moi, gio_moi, trang_thai_cu, trang_thai_moi, loai_thay_doi, ly_do, id_tai_khoan, thoi_gian_thay_doi) VALUES
-(1, 1, NULL, NULL, '2026-02-15', '10:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001012', '2026-02-08 10:30:00'),
-(2, 2, NULL, NULL, '2026-01-07', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2025-12-31 09:30:00'),
-(3, 3, NULL, NULL, '2026-03-02', '14:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-02-23 14:30:00'),
-(4, 4, NULL, NULL, '2026-02-27', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-02-20 15:00:00'),
-(5, 5, NULL, NULL, '2026-02-08', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-02-01 14:00:00'),
-(6, 6, NULL, NULL, '2026-02-24', '08:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-02-17 08:30:00'),
-(7, 7, NULL, NULL, '2026-01-11', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-01-04 12:00:00'),
-(8, 8, NULL, NULL, '2026-03-21', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-03-14 16:30:00'),
-(9, 9, NULL, NULL, '2026-02-07', '14:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-01-31 14:30:00'),
-(10, 10, NULL, NULL, '2026-04-20', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-04-13 15:00:00'),
-(11, 11, NULL, NULL, '2026-02-22', '12:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001027', '2026-02-15 12:30:00'),
-(12, 12, NULL, NULL, '2026-02-10', '13:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001017', '2026-02-03 13:30:00'),
-(13, 13, NULL, NULL, '2026-01-20', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-01-13 14:00:00'),
-(14, 14, NULL, NULL, '2026-02-25', '08:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-02-18 08:30:00'),
-(15, 15, NULL, NULL, '2026-01-08', '16:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2026-01-01 16:30:00'),
-(16, 16, NULL, NULL, '2026-02-15', '13:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-08 13:00:00'),
-(17, 17, NULL, NULL, '2026-02-15', '08:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-08 08:00:00'),
+(117, 40, 3, '2026-02-03', '11:30:00', 'Kho tho, ho khan', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-03 11:15:00', '2026-02-03 11:30:00', '2026-02-03 12:00:00', '2026-01-27 11:30:00', '2026-02-03 12:00:00'),
+(118, 9, 1, '2026-03-30', '14:00:00', 'Noi man ngua', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-30 13:45:00', '2026-03-30 14:00:00', '2026-03-30 14:30:00', '2026-03-23 14:00:00', '2026-03-30 14:30:00'),
+(119, 44, 3, '2026-02-27', '09:30:00', 'Dau bung, buon non', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-02-27 09:15:00', '2026-02-27 09:30:00', '2026-02-27 10:00:00', '2026-02-20 09:30:00', '2026-02-27 10:00:00'),
+(120, 35, 3, '2026-03-27', '12:00:00', 'Dau hong, nghen mui', 'Hoan thanh', 'Truc tuyen', NULL, NULL, NULL, '2026-03-27 11:45:00', '2026-03-27 12:00:00', '2026-03-27 12:30:00', '2026-03-20 12:00:00', '2026-03-27 12:30:00');
+
+-- Kiem tra lich hen voi lich lam viec, chuyen trang thai, tinh hoa don va thanh toan
+-- duoc xu ly tai NestJS Service + TypeORM Transaction.
+
+INSERT INTO lich_su_lich_hen (id_lich_su_lich_hen, id_lich_hen, ngay_cu, gio_cu, ngay_moi, gio_moi, trang_thai_cu, trang_thai_moi, loai_thay_doi, ly_do, nguoi_thay_doi, thoi_gian_thay_doi) VALUES
+(1, 1, NULL, NULL, '2026-02-15', '10:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001012', '2026-02-08 10:30:00'),
+(2, 2, NULL, NULL, '2026-01-07', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2025-12-31 09:30:00'),
+(3, 3, NULL, NULL, '2026-03-02', '14:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-02-23 14:30:00'),
+(4, 4, NULL, NULL, '2026-02-27', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-02-20 15:00:00'),
+(5, 5, NULL, NULL, '2026-02-08', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-02-01 14:00:00'),
+(6, 6, NULL, NULL, '2026-02-24', '08:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-02-17 08:30:00'),
+(7, 7, NULL, NULL, '2026-01-11', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-01-04 12:00:00'),
+(8, 8, NULL, NULL, '2026-03-21', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-03-14 16:30:00'),
+(9, 9, NULL, NULL, '2026-02-07', '14:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-01-31 14:30:00'),
+(10, 10, NULL, NULL, '2026-04-20', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-04-13 15:00:00'),
+(11, 11, NULL, NULL, '2026-02-22', '12:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001027', '2026-02-15 12:30:00'),
+(12, 12, NULL, NULL, '2026-02-10', '13:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001017', '2026-02-03 13:30:00'),
+(13, 13, NULL, NULL, '2026-01-20', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-01-13 14:00:00'),
+(14, 14, NULL, NULL, '2026-02-25', '08:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-02-18 08:30:00'),
+(15, 15, NULL, NULL, '2026-01-08', '16:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2026-01-01 16:30:00'),
+(16, 16, NULL, NULL, '2026-02-15', '13:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-08 13:00:00'),
+(17, 17, NULL, NULL, '2026-02-15', '08:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-08 08:00:00'),
 (18, 18, NULL, NULL, '2026-01-29', '08:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001036', '2026-01-22 08:30:00'),
-(19, 19, NULL, NULL, '2026-01-15', '11:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-08 11:00:00'),
-(20, 20, NULL, NULL, '2026-04-09', '16:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-04-02 16:00:00'),
-(21, 21, NULL, NULL, '2026-01-04', '09:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001049', '2025-12-28 09:30:00'),
-(22, 22, NULL, NULL, '2026-02-13', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-06 12:00:00'),
-(23, 23, NULL, NULL, '2026-03-26', '13:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001048', '2026-03-19 13:00:00'),
-(24, 24, NULL, NULL, '2026-01-12', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001027', '2026-01-05 15:00:00'),
-(25, 25, NULL, NULL, '2026-02-13', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-02-06 09:30:00'),
+(19, 19, NULL, NULL, '2026-01-15', '11:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-08 11:00:00'),
+(20, 20, NULL, NULL, '2026-04-09', '16:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-04-02 16:00:00'),
+(21, 21, NULL, NULL, '2026-01-04', '09:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001049', '2025-12-28 09:30:00'),
+(22, 22, NULL, NULL, '2026-02-13', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-06 12:00:00'),
+(23, 23, NULL, NULL, '2026-03-26', '13:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001048', '2026-03-19 13:00:00'),
+(24, 24, NULL, NULL, '2026-01-12', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001027', '2026-01-05 15:00:00'),
+(25, 25, NULL, NULL, '2026-02-13', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-02-06 09:30:00'),
 (26, 26, NULL, NULL, '2026-04-10', '16:00:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001004', '2026-04-03 16:00:00'),
-(27, 27, NULL, NULL, '2026-01-21', '16:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-01-14 16:00:00'),
-(28, 28, NULL, NULL, '2026-02-26', '13:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-02-19 13:30:00'),
-(29, 29, NULL, NULL, '2026-02-04', '10:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-28 10:00:00'),
-(30, 30, NULL, NULL, '2026-02-06', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-01-30 16:30:00'),
-(31, 31, NULL, NULL, '2026-01-06', '10:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001004', '2025-12-30 10:30:00'),
-(32, 32, NULL, NULL, '2026-01-27', '11:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-01-20 11:00:00'),
-(33, 33, NULL, NULL, '2026-02-07', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001032', '2026-01-31 12:00:00'),
-(34, 34, NULL, NULL, '2026-01-23', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001046', '2026-01-16 09:30:00'),
-(35, 35, NULL, NULL, '2026-03-06', '15:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001026', '2026-02-27 15:30:00'),
+(27, 27, NULL, NULL, '2026-01-21', '16:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-01-14 16:00:00'),
+(28, 28, NULL, NULL, '2026-02-26', '13:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-02-19 13:30:00'),
+(29, 29, NULL, NULL, '2026-02-04', '10:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-28 10:00:00'),
+(30, 30, NULL, NULL, '2026-02-06', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-01-30 16:30:00'),
+(31, 31, NULL, NULL, '2026-01-06', '10:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001004', '2025-12-30 10:30:00'),
+(32, 32, NULL, NULL, '2026-01-27', '11:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-01-20 11:00:00'),
+(33, 33, NULL, NULL, '2026-02-07', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001032', '2026-01-31 12:00:00'),
+(34, 34, NULL, NULL, '2026-01-23', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001046', '2026-01-16 09:30:00'),
+(35, 35, NULL, NULL, '2026-03-06', '15:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001026', '2026-02-27 15:30:00'),
 (36, 36, NULL, NULL, '2026-02-25', '07:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001005', '2026-02-18 07:30:00'),
-(37, 37, NULL, NULL, '2026-03-15', '13:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001041', '2026-03-08 13:30:00'),
-(38, 38, NULL, NULL, '2026-02-07', '08:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001021', '2026-01-31 08:30:00'),
+(37, 37, NULL, NULL, '2026-03-15', '13:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001041', '2026-03-08 13:30:00'),
+(38, 38, NULL, NULL, '2026-02-07', '08:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001021', '2026-01-31 08:30:00'),
 (39, 39, NULL, NULL, '2026-04-13', '16:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-04-06 16:30:00'),
-(40, 40, NULL, NULL, '2026-01-12', '13:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-05 13:00:00'),
-(41, 41, NULL, NULL, '2026-02-21', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-02-14 15:00:00'),
-(42, 42, NULL, NULL, '2026-01-29', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-01-22 12:00:00'),
+(40, 40, NULL, NULL, '2026-01-12', '13:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-05 13:00:00'),
+(41, 41, NULL, NULL, '2026-02-21', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-02-14 15:00:00'),
+(42, 42, NULL, NULL, '2026-01-29', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-01-22 12:00:00'),
 (43, 43, NULL, NULL, '2026-03-09', '15:00:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001050', '2026-03-02 15:00:00'),
-(44, 44, NULL, NULL, '2026-02-14', '09:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-07 09:00:00'),
-(45, 45, NULL, NULL, '2026-01-26', '09:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001049', '2026-01-19 09:00:00'),
-(46, 46, NULL, NULL, '2026-01-23', '14:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001037', '2026-01-16 14:30:00'),
+(44, 44, NULL, NULL, '2026-02-14', '09:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-07 09:00:00'),
+(45, 45, NULL, NULL, '2026-01-26', '09:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001049', '2026-01-19 09:00:00'),
+(46, 46, NULL, NULL, '2026-01-23', '14:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001037', '2026-01-16 14:30:00'),
 (47, 47, NULL, NULL, '2026-02-27', '16:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001041', '2026-02-20 16:30:00'),
-(48, 48, NULL, NULL, '2026-01-20', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-01-13 14:00:00'),
-(49, 49, NULL, NULL, '2026-04-12', '11:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-04-05 11:00:00'),
-(50, 50, NULL, NULL, '2026-02-09', '14:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001004', '2026-02-02 14:30:00'),
-(51, 51, NULL, NULL, '2026-04-17', '11:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-04-10 11:00:00'),
-(52, 52, NULL, NULL, '2026-03-18', '15:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-03-11 15:30:00'),
+(48, 48, NULL, NULL, '2026-01-20', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-01-13 14:00:00'),
+(49, 49, NULL, NULL, '2026-04-12', '11:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-04-05 11:00:00'),
+(50, 50, NULL, NULL, '2026-02-09', '14:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001004', '2026-02-02 14:30:00'),
+(51, 51, NULL, NULL, '2026-04-17', '11:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-04-10 11:00:00'),
+(52, 52, NULL, NULL, '2026-03-18', '15:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-03-11 15:30:00'),
 (53, 53, NULL, NULL, '2026-04-12', '07:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001037', '2026-04-05 07:30:00'),
-(54, 54, NULL, NULL, '2026-02-11', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-04 16:30:00'),
-(55, 55, NULL, NULL, '2026-02-27', '08:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-02-20 08:30:00'),
-(56, 56, NULL, NULL, '2026-03-24', '09:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001046', '2026-03-17 09:00:00'),
-(57, 57, NULL, NULL, '2026-02-26', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-02-19 15:00:00'),
-(58, 58, NULL, NULL, '2026-02-19', '13:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-12 13:30:00'),
-(59, 59, NULL, NULL, '2026-04-12', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001007', '2026-04-05 12:00:00'),
-(60, 60, NULL, NULL, '2026-03-28', '13:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-03-21 13:30:00'),
-(61, 61, NULL, NULL, '2026-04-22', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-04-15 09:30:00'),
-(62, 62, NULL, NULL, '2026-02-14', '11:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-07 11:30:00'),
-(63, 63, NULL, NULL, '2026-02-09', '15:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001022', '2026-02-02 15:30:00'),
-(64, 64, NULL, NULL, '2026-03-27', '15:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-03-20 15:00:00'),
-(65, 65, NULL, NULL, '2026-03-07', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-02-28 12:00:00'),
-(66, 66, NULL, NULL, '2026-01-28', '12:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001015', '2026-01-21 12:30:00'),
+(54, 54, NULL, NULL, '2026-02-11', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-04 16:30:00'),
+(55, 55, NULL, NULL, '2026-02-27', '08:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-02-20 08:30:00'),
+(56, 56, NULL, NULL, '2026-03-24', '09:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001046', '2026-03-17 09:00:00'),
+(57, 57, NULL, NULL, '2026-02-26', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-02-19 15:00:00'),
+(58, 58, NULL, NULL, '2026-02-19', '13:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-12 13:30:00'),
+(59, 59, NULL, NULL, '2026-04-12', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001007', '2026-04-05 12:00:00'),
+(60, 60, NULL, NULL, '2026-03-28', '13:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-03-21 13:30:00'),
+(61, 61, NULL, NULL, '2026-04-22', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001038', '2026-04-15 09:30:00'),
+(62, 62, NULL, NULL, '2026-02-14', '11:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001039', '2026-02-07 11:30:00'),
+(63, 63, NULL, NULL, '2026-02-09', '15:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001022', '2026-02-02 15:30:00'),
+(64, 64, NULL, NULL, '2026-03-27', '15:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-03-20 15:00:00'),
+(65, 65, NULL, NULL, '2026-03-07', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-02-28 12:00:00'),
+(66, 66, NULL, NULL, '2026-01-28', '12:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001015', '2026-01-21 12:30:00'),
 (67, 67, NULL, NULL, '2026-01-20', '08:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001007', '2026-01-13 08:30:00'),
-(68, 68, NULL, NULL, '2026-04-09', '15:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001022', '2026-04-02 15:00:00'),
-(69, 69, NULL, NULL, '2026-01-17', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001011', '2026-01-10 16:30:00'),
-(70, 70, NULL, NULL, '2026-04-17', '16:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-04-10 16:00:00'),
-(71, 71, NULL, NULL, '2026-02-22', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-02-15 12:00:00'),
-(72, 72, NULL, NULL, '2026-04-07', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001016', '2026-03-31 14:00:00'),
-(73, 73, NULL, NULL, '2026-04-14', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001044', '2026-04-07 14:00:00'),
-(74, 74, NULL, NULL, '2026-02-26', '14:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001025', '2026-02-19 14:30:00'),
-(75, 75, NULL, NULL, '2026-03-09', '13:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001013', '2026-03-02 13:00:00'),
-(76, 76, NULL, NULL, '2026-01-18', '11:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-01-11 11:00:00'),
-(77, 77, NULL, NULL, '2026-03-12', '08:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-03-05 08:00:00'),
+(68, 68, NULL, NULL, '2026-04-09', '15:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001022', '2026-04-02 15:00:00'),
+(69, 69, NULL, NULL, '2026-01-17', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001011', '2026-01-10 16:30:00'),
+(70, 70, NULL, NULL, '2026-04-17', '16:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001029', '2026-04-10 16:00:00'),
+(71, 71, NULL, NULL, '2026-02-22', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-02-15 12:00:00'),
+(72, 72, NULL, NULL, '2026-04-07', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001016', '2026-03-31 14:00:00'),
+(73, 73, NULL, NULL, '2026-04-14', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001044', '2026-04-07 14:00:00'),
+(74, 74, NULL, NULL, '2026-02-26', '14:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001025', '2026-02-19 14:30:00'),
+(75, 75, NULL, NULL, '2026-03-09', '13:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001013', '2026-03-02 13:00:00'),
+(76, 76, NULL, NULL, '2026-01-18', '11:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-01-11 11:00:00'),
+(77, 77, NULL, NULL, '2026-03-12', '08:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-03-05 08:00:00'),
 (78, 78, NULL, NULL, '2026-02-04', '14:00:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001028', '2026-01-28 14:00:00'),
 (79, 79, NULL, NULL, '2026-01-29', '14:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001002', '2026-01-22 14:30:00'),
-(80, 80, NULL, NULL, '2026-01-07', '13:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001025', '2025-12-31 13:30:00'),
-(81, 81, NULL, NULL, '2026-02-17', '10:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001007', '2026-02-10 10:00:00'),
-(82, 82, NULL, NULL, '2026-04-12', '09:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-04-05 09:00:00'),
-(83, 83, NULL, NULL, '2026-03-31', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-03-24 09:30:00'),
-(84, 84, NULL, NULL, '2026-01-11', '07:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-01-04 07:30:00'),
-(85, 85, NULL, NULL, '2026-04-04', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001050', '2026-03-28 16:30:00'),
-(86, 86, NULL, NULL, '2026-01-31', '11:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001016', '2026-01-24 11:00:00'),
-(87, 87, NULL, NULL, '2026-03-23', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2026-03-16 16:30:00'),
-(88, 88, NULL, NULL, '2026-03-18', '15:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-03-11 15:00:00'),
-(89, 89, NULL, NULL, '2026-01-31', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001001', '2026-01-24 09:30:00'),
-(90, 90, NULL, NULL, '2026-02-15', '10:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-08 10:30:00'),
-(91, 91, NULL, NULL, '2026-03-09', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001035', '2026-03-02 12:00:00'),
-(92, 92, NULL, NULL, '2026-04-11', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-04-04 15:00:00'),
-(93, 93, NULL, NULL, '2026-03-23', '13:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001048', '2026-03-16 13:30:00'),
-(94, 94, NULL, NULL, '2026-02-15', '08:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-02-08 08:30:00'),
-(95, 95, NULL, NULL, '2026-04-09', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-04-02 16:30:00'),
+(80, 80, NULL, NULL, '2026-01-07', '13:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001025', '2025-12-31 13:30:00'),
+(81, 81, NULL, NULL, '2026-02-17', '10:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001007', '2026-02-10 10:00:00'),
+(82, 82, NULL, NULL, '2026-04-12', '09:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-04-05 09:00:00'),
+(83, 83, NULL, NULL, '2026-03-31', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-03-24 09:30:00'),
+(84, 84, NULL, NULL, '2026-01-11', '07:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-01-04 07:30:00'),
+(85, 85, NULL, NULL, '2026-04-04', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001050', '2026-03-28 16:30:00'),
+(86, 86, NULL, NULL, '2026-01-31', '11:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001016', '2026-01-24 11:00:00'),
+(87, 87, NULL, NULL, '2026-03-23', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001008', '2026-03-16 16:30:00'),
+(88, 88, NULL, NULL, '2026-03-18', '15:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001033', '2026-03-11 15:00:00'),
+(89, 89, NULL, NULL, '2026-01-31', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001001', '2026-01-24 09:30:00'),
+(90, 90, NULL, NULL, '2026-02-15', '10:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-08 10:30:00'),
+(91, 91, NULL, NULL, '2026-03-09', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001035', '2026-03-02 12:00:00'),
+(92, 92, NULL, NULL, '2026-04-11', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001031', '2026-04-04 15:00:00'),
+(93, 93, NULL, NULL, '2026-03-23', '13:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001048', '2026-03-16 13:30:00'),
+(94, 94, NULL, NULL, '2026-02-15', '08:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001047', '2026-02-08 08:30:00'),
+(95, 95, NULL, NULL, '2026-04-09', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-04-02 16:30:00'),
 (96, 96, NULL, NULL, '2026-03-11', '12:00:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001050', '2026-03-04 12:00:00'),
-(97, 97, NULL, NULL, '2026-03-31', '14:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-03-24 14:00:00'),
-(98, 98, NULL, NULL, '2026-04-02', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001013', '2026-03-26 14:00:00'),
-(99, 99, NULL, NULL, '2026-04-12', '10:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-04-05 10:00:00'),
-(100, 100, NULL, NULL, '2026-02-20', '15:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-02-13 15:30:00'),
+(97, 97, NULL, NULL, '2026-03-31', '14:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-03-24 14:00:00'),
+(98, 98, NULL, NULL, '2026-04-02', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001013', '2026-03-26 14:00:00'),
+(99, 99, NULL, NULL, '2026-04-12', '10:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001020', '2026-04-05 10:00:00'),
+(100, 100, NULL, NULL, '2026-02-20', '15:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001003', '2026-02-13 15:30:00'),
 (101, 101, NULL, NULL, '2026-02-06', '12:00:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001042', '2026-01-30 12:00:00'),
-(102, 102, NULL, NULL, '2026-02-04', '08:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001026', '2026-01-28 08:30:00'),
-(103, 103, NULL, NULL, '2026-02-19', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-02-12 12:00:00'),
-(104, 104, NULL, NULL, '2026-02-17', '15:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-02-10 15:30:00'),
-(105, 105, NULL, NULL, '2026-01-11', '13:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-01-04 13:00:00'),
-(106, 106, NULL, NULL, '2026-01-14', '08:30:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-01-07 08:30:00'),
-(107, 107, NULL, NULL, '2026-02-27', '16:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-02-20 16:30:00'),
-(108, 108, NULL, NULL, '2026-02-14', '14:00:00', NULL, 'Cho kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001023', '2026-02-07 14:00:00'),
-(109, 109, NULL, NULL, '2026-02-25', '11:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-18 11:00:00'),
-(110, 110, NULL, NULL, '2026-02-16', '15:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-09 15:00:00'),
-(111, 111, NULL, NULL, '2026-03-28', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001005', '2026-03-21 14:00:00'),
-(112, 112, NULL, NULL, '2026-04-10', '12:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001037', '2026-04-03 12:30:00'),
-(113, 113, NULL, NULL, '2026-03-19', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-03-12 09:30:00'),
-(114, 114, NULL, NULL, '2026-04-08', '08:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-04-01 08:00:00'),
-(115, 115, NULL, NULL, '2026-02-10', '11:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001002', '2026-02-03 11:00:00'),
+(102, 102, NULL, NULL, '2026-02-04', '08:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001026', '2026-01-28 08:30:00'),
+(103, 103, NULL, NULL, '2026-02-19', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-02-12 12:00:00'),
+(104, 104, NULL, NULL, '2026-02-17', '15:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001006', '2026-02-10 15:30:00'),
+(105, 105, NULL, NULL, '2026-01-11', '13:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-01-04 13:00:00'),
+(106, 106, NULL, NULL, '2026-01-14', '08:30:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001019', '2026-01-07 08:30:00'),
+(107, 107, NULL, NULL, '2026-02-27', '16:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001045', '2026-02-20 16:30:00'),
+(108, 108, NULL, NULL, '2026-02-14', '14:00:00', NULL, 'Da xac nhan', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001023', '2026-02-07 14:00:00'),
+(109, 109, NULL, NULL, '2026-02-25', '11:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001043', '2026-02-18 11:00:00'),
+(110, 110, NULL, NULL, '2026-02-16', '15:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001010', '2026-02-09 15:00:00'),
+(111, 111, NULL, NULL, '2026-03-28', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001005', '2026-03-21 14:00:00'),
+(112, 112, NULL, NULL, '2026-04-10', '12:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001037', '2026-04-03 12:30:00'),
+(113, 113, NULL, NULL, '2026-03-19', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-03-12 09:30:00'),
+(114, 114, NULL, NULL, '2026-04-08', '08:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001024', '2026-04-01 08:00:00'),
+(115, 115, NULL, NULL, '2026-02-10', '11:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001002', '2026-02-03 11:00:00'),
 (116, 116, NULL, NULL, '2026-03-05', '15:30:00', NULL, 'Huy', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001036', '2026-02-26 15:30:00'),
-(117, 117, NULL, NULL, '2026-02-03', '11:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-01-27 11:30:00'),
-(118, 118, NULL, NULL, '2026-03-30', '14:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-03-23 14:00:00'),
-(119, 119, NULL, NULL, '2026-02-27', '09:30:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001044', '2026-02-20 09:30:00'),
-(120, 120, NULL, NULL, '2026-03-27', '12:00:00', NULL, 'Da kham', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001035', '2026-03-20 12:00:00');
+(117, 117, NULL, NULL, '2026-02-03', '11:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001040', '2026-01-27 11:30:00'),
+(118, 118, NULL, NULL, '2026-03-30', '14:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001009', '2026-03-23 14:00:00'),
+(119, 119, NULL, NULL, '2026-02-27', '09:30:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001044', '2026-02-20 09:30:00'),
+(120, 120, NULL, NULL, '2026-03-27', '12:00:00', NULL, 'Hoan thanh', 'Tao lich', 'Tao lich kham', '00000000-0000-0000-0000-000000001035', '2026-03-20 12:00:00');
 INSERT INTO tiep_nhan_benh_nhan (id_tiep_nhan_benh_nhan, id_lich_hen, can_nang, chieu_cao, nhiet_do, huyet_ap_tam_thu, huyet_ap_tam_truong, nhip_tim, spo2, trieu_chung_ban_dau, ghi_chu, thoi_gian_ghi_nhan) VALUES
 (1, 1, 51, 156, 36.5, 109, 69, 65, 97, 'Dau nguc, hoi hop', NULL, '2026-02-15 10:20:00'),
 (2, 2, 52, 157, 36.6, 110, 70, 66, 98, 'Dau bung, buon non', NULL, '2026-01-07 09:20:00'),
@@ -1526,6 +1625,286 @@ INSERT INTO goi_y_thuoc (id_goi_y_thuoc, id_danh_muc_ten_benh, id_thuoc, muc_do_
 (38, 8, 39, 3, 'Ho tro dieu tri theo chan doan', 'Theo chi dinh cua bac si', NULL, TRUE, '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
 (39, 8, 30, 4, 'Ho tro dieu tri theo chan doan', 'Theo chi dinh cua bac si', NULL, TRUE, '2026-01-01 08:00:00', '2026-01-01 08:00:00'),
 (40, 8, 34, 5, 'Ho tro dieu tri theo chan doan', 'Theo chi dinh cua bac si', NULL, TRUE, '2026-01-01 08:00:00', '2026-01-01 08:00:00');
+INSERT INTO don_thuoc (id_don_thuoc, id_phieu_kham, id_benh_nhan, id_bac_si, ngay_ke_don, ghi_chu, trang_thai, ngay_tao, ngay_cap_nhat) VALUES
+(1, 1, 12, 3, '2026-02-15', 'Uong sau bua an', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
+(2, 2, 8, 1, '2026-01-07', '3 lan/ngay', 'Da ke', '2026-01-07 00:00:00', '2026-01-07 00:00:00'),
+(3, 3, 38, 1, '2026-03-02', '3 lan/ngay', 'Da ke', '2026-03-02 00:00:00', '2026-03-02 00:00:00'),
+(4, 4, 3, 5, '2026-02-27', '2 lan/ngay', 'Da ke', '2026-02-27 00:00:00', '2026-02-27 00:00:00'),
+(5, 5, 31, 4, '2026-02-08', '2 lan/ngay', 'Da ke', '2026-02-08 00:00:00', '2026-02-08 00:00:00'),
+(6, 6, 9, 3, '2026-01-11', 'Uong sau bua an', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
+(7, 7, 39, 5, '2026-03-21', 'Uong truoc khi ngu', 'Da ke', '2026-03-21 00:00:00', '2026-03-21 00:00:00'),
+(8, 8, 45, 1, '2026-02-07', 'Uong sau bua an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
+(9, 9, 29, 2, '2026-04-20', '2 lan/ngay', 'Da ke', '2026-04-20 00:00:00', '2026-04-20 00:00:00'),
+(10, 10, 27, 1, '2026-02-22', 'Khi can', 'Da ke', '2026-02-22 00:00:00', '2026-02-22 00:00:00'),
+(11, 11, 6, 1, '2026-01-20', 'Uong truoc khi ngu', 'Da ke', '2026-01-20 00:00:00', '2026-01-20 00:00:00'),
+(12, 12, 39, 3, '2026-02-15', 'Uong sau bua an', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
+(13, 13, 43, 4, '2026-02-15', 'Uong truoc khi ngu', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
+(14, 14, 43, 3, '2026-04-09', 'Khi can', 'Da ke', '2026-04-09 00:00:00', '2026-04-09 00:00:00'),
+(15, 15, 10, 5, '2026-02-13', '2 lan/ngay', 'Da ke', '2026-02-13 00:00:00', '2026-02-13 00:00:00'),
+(16, 16, 48, 1, '2026-03-26', '2 lan/ngay', 'Da ke', '2026-03-26 00:00:00', '2026-03-26 00:00:00'),
+(17, 17, 27, 4, '2026-01-12', '2 lan/ngay', 'Da ke', '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
+(18, 18, 47, 3, '2026-02-13', '2 lan/ngay', 'Da ke', '2026-02-13 00:00:00', '2026-02-13 00:00:00'),
+(19, 19, 29, 4, '2026-02-26', '2 lan/ngay', 'Da ke', '2026-02-26 00:00:00', '2026-02-26 00:00:00'),
+(20, 20, 28, 1, '2026-02-04', 'Uong sau bua an', 'Da ke', '2026-02-04 00:00:00', '2026-02-04 00:00:00'),
+(21, 21, 43, 3, '2026-02-06', 'Sau an', 'Da ke', '2026-02-06 00:00:00', '2026-02-06 00:00:00'),
+(22, 22, 4, 1, '2026-01-06', 'Uong sau bua an', 'Da ke', '2026-01-06 00:00:00', '2026-01-06 00:00:00'),
+(23, 23, 32, 4, '2026-02-07', 'Sau an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
+(24, 24, 46, 2, '2026-01-23', 'Khi can', 'Da ke', '2026-01-23 00:00:00', '2026-01-23 00:00:00'),
+(25, 25, 26, 1, '2026-03-06', 'Uong sau bua an', 'Da ke', '2026-03-06 00:00:00', '2026-03-06 00:00:00'),
+(26, 26, 21, 2, '2026-02-07', 'Sau an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
+(27, 27, 28, 5, '2026-01-12', 'Khi can', 'Da ke', '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
+(28, 28, 20, 3, '2026-02-21', 'Uong sau bua an', 'Da ke', '2026-02-21 00:00:00', '2026-02-21 00:00:00'),
+(29, 29, 33, 1, '2026-01-29', '2 lan/ngay', 'Da ke', '2026-01-29 00:00:00', '2026-01-29 00:00:00'),
+(30, 30, 10, 3, '2026-02-14', 'Uong truoc khi ngu', 'Da ke', '2026-02-14 00:00:00', '2026-02-14 00:00:00'),
+(32, 32, 33, 1, '2026-04-12', 'Uong truoc khi ngu', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
+(34, 34, 38, 5, '2026-03-18', 'Khi can', 'Da ke', '2026-03-18 00:00:00', '2026-03-18 00:00:00'),
+(35, 35, 10, 1, '2026-02-11', '2 lan/ngay', 'Da ke', '2026-02-11 00:00:00', '2026-02-11 00:00:00'),
+(36, 36, 46, 4, '2026-03-24', '3 lan/ngay', 'Da ke', '2026-03-24 00:00:00', '2026-03-24 00:00:00'),
+(38, 38, 7, 5, '2026-04-12', 'Sau an', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
+(39, 39, 47, 5, '2026-03-28', '2 lan/ngay', 'Da ke', '2026-03-28 00:00:00', '2026-03-28 00:00:00'),
+(40, 40, 38, 2, '2026-04-22', 'Uong sau bua an', 'Da ke', '2026-04-22 00:00:00', '2026-04-22 00:00:00'),
+(42, 42, 20, 2, '2026-03-07', 'Uong sau bua an', 'Da ke', '2026-03-07 00:00:00', '2026-03-07 00:00:00'),
+(43, 43, 15, 2, '2026-01-28', 'Khi can', 'Da ke', '2026-01-28 00:00:00', '2026-01-28 00:00:00'),
+(44, 44, 11, 2, '2026-01-17', 'Khi can', 'Da ke', '2026-01-17 00:00:00', '2026-01-17 00:00:00'),
+(46, 46, 16, 3, '2026-04-07', 'Uong truoc khi ngu', 'Da ke', '2026-04-07 00:00:00', '2026-04-07 00:00:00'),
+(47, 47, 44, 5, '2026-04-14', '3 lan/ngay', 'Da ke', '2026-04-14 00:00:00', '2026-04-14 00:00:00'),
+(48, 48, 6, 2, '2026-03-12', 'Uong truoc khi ngu', 'Da ke', '2026-03-12 00:00:00', '2026-03-12 00:00:00'),
+(49, 49, 25, 1, '2026-01-07', '2 lan/ngay', 'Da ke', '2026-01-07 00:00:00', '2026-01-07 00:00:00'),
+(50, 50, 7, 3, '2026-02-17', '2 lan/ngay', 'Da ke', '2026-02-17 00:00:00', '2026-02-17 00:00:00'),
+(51, 51, 19, 4, '2026-04-12', 'Sau an', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
+(52, 52, 40, 1, '2026-03-31', 'Uong sau bua an', 'Da ke', '2026-03-31 00:00:00', '2026-03-31 00:00:00'),
+(53, 53, 10, 5, '2026-01-11', 'Khi can', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
+(54, 54, 50, 3, '2026-04-04', 'Sau an', 'Da ke', '2026-04-04 00:00:00', '2026-04-04 00:00:00'),
+(56, 56, 8, 4, '2026-03-23', 'Khi can', 'Da ke', '2026-03-23 00:00:00', '2026-03-23 00:00:00'),
+(57, 57, 1, 5, '2026-01-31', 'Uong truoc khi ngu', 'Da ke', '2026-01-31 00:00:00', '2026-01-31 00:00:00'),
+(58, 58, 43, 1, '2026-02-15', '3 lan/ngay', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
+(60, 60, 31, 1, '2026-04-11', '3 lan/ngay', 'Da ke', '2026-04-11 00:00:00', '2026-04-11 00:00:00'),
+(61, 61, 48, 1, '2026-03-23', 'Uong sau bua an', 'Da ke', '2026-03-23 00:00:00', '2026-03-23 00:00:00'),
+(62, 62, 47, 1, '2026-02-15', '2 lan/ngay', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
+(63, 63, 3, 3, '2026-04-09', 'Sau an', 'Da ke', '2026-04-09 00:00:00', '2026-04-09 00:00:00'),
+(64, 64, 13, 1, '2026-04-02', 'Khi can', 'Da ke', '2026-04-02 00:00:00', '2026-04-02 00:00:00'),
+(65, 65, 20, 5, '2026-04-12', '3 lan/ngay', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
+(66, 66, 3, 2, '2026-02-20', 'Khi can', 'Da ke', '2026-02-20 00:00:00', '2026-02-20 00:00:00'),
+(67, 67, 26, 4, '2026-02-04', 'Uong truoc khi ngu', 'Da ke', '2026-02-04 00:00:00', '2026-02-04 00:00:00'),
+(68, 68, 45, 4, '2026-02-19', '3 lan/ngay', 'Da ke', '2026-02-19 00:00:00', '2026-02-19 00:00:00'),
+(69, 69, 19, 3, '2026-01-11', 'Khi can', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
+(70, 70, 45, 4, '2026-02-27', '2 lan/ngay', 'Da ke', '2026-02-27 00:00:00', '2026-02-27 00:00:00'),
+(72, 72, 10, 5, '2026-02-16', '3 lan/ngay', 'Da ke', '2026-02-16 00:00:00', '2026-02-16 00:00:00'),
+(73, 73, 5, 2, '2026-03-28', 'Khi can', 'Da ke', '2026-03-28 00:00:00', '2026-03-28 00:00:00'),
+(74, 74, 37, 1, '2026-04-10', 'Uong sau bua an', 'Da ke', '2026-04-10 00:00:00', '2026-04-10 00:00:00'),
+(75, 75, 24, 4, '2026-03-19', 'Khi can', 'Da ke', '2026-03-19 00:00:00', '2026-03-19 00:00:00'),
+(76, 76, 24, 4, '2026-04-08', 'Uong truoc khi ngu', 'Da ke', '2026-04-08 00:00:00', '2026-04-08 00:00:00'),
+(77, 77, 2, 2, '2026-02-10', '2 lan/ngay', 'Da ke', '2026-02-10 00:00:00', '2026-02-10 00:00:00'),
+(78, 78, 40, 3, '2026-02-03', 'Sau an', 'Da ke', '2026-02-03 00:00:00', '2026-02-03 00:00:00'),
+(79, 79, 9, 1, '2026-03-30', 'Uong sau bua an', 'Da ke', '2026-03-30 00:00:00', '2026-03-30 00:00:00'),
+(81, 81, 35, 3, '2026-03-27', '2 lan/ngay', 'Da ke', '2026-03-27 00:00:00', '2026-03-27 00:00:00');
+INSERT INTO chi_tiet_don_thuoc (id_chi_tiet_don_thuoc, id_don_thuoc, id_thuoc, so_luong, lieu_dung, tan_suat, so_ngay_dung, duong_dung, huong_dan, don_gia_tai_thoi_diem_ke, ngay_tao) VALUES
+(1, 1, 69, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 40000.00, '2026-02-15 00:00:00'),
+(2, 1, 44, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 40000.00, '2026-02-15 00:00:00'),
+(3, 1, 70, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 10000.00, '2026-02-15 00:00:00'),
+(4, 1, 46, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 18000.00, '2026-02-15 00:00:00'),
+(5, 2, 89, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-01-07 00:00:00'),
+(6, 2, 91, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 5000.00, '2026-01-07 00:00:00'),
+(7, 3, 51, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 7000.00, '2026-03-02 00:00:00'),
+(8, 3, 45, 5, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 5000.00, '2026-03-02 00:00:00'),
+(9, 3, 99, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 8000.00, '2026-03-02 00:00:00'),
+(10, 3, 19, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 40000.00, '2026-03-02 00:00:00'),
+(11, 4, 72, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 35000.00, '2026-02-27 00:00:00'),
+(12, 4, 90, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-02-27 00:00:00'),
+(13, 4, 35, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-27 00:00:00'),
+(14, 5, 82, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-02-08 00:00:00'),
+(15, 5, 30, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-02-08 00:00:00'),
+(16, 6, 71, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-01-11 00:00:00'),
+(17, 7, 37, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-03-21 00:00:00'),
+(18, 7, 83, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 35000.00, '2026-03-21 00:00:00'),
+(19, 7, 8, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-03-21 00:00:00'),
+(20, 8, 51, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-07 00:00:00'),
+(21, 9, 43, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-04-20 00:00:00'),
+(22, 10, 25, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-22 00:00:00'),
+(23, 10, 15, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-02-22 00:00:00'),
+(24, 10, 43, 5, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-02-22 00:00:00'),
+(25, 11, 23, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 35000.00, '2026-01-20 00:00:00'),
+(26, 11, 79, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-01-20 00:00:00'),
+(27, 12, 62, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-02-15 00:00:00'),
+(28, 12, 42, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 20000.00, '2026-02-15 00:00:00'),
+(29, 13, 75, 1, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 40000.00, '2026-02-15 00:00:00'),
+(30, 13, 93, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-02-15 00:00:00'),
+(31, 13, 74, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-02-15 00:00:00'),
+(32, 14, 89, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-09 00:00:00'),
+(33, 14, 16, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-04-09 00:00:00'),
+(34, 14, 82, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 12000.00, '2026-04-09 00:00:00'),
+(35, 15, 54, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-02-13 00:00:00'),
+(36, 15, 90, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-13 00:00:00'),
+(37, 15, 71, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-02-13 00:00:00'),
+(38, 16, 8, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-26 00:00:00'),
+(39, 17, 15, 10, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-01-12 00:00:00'),
+(40, 17, 88, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 15000.00, '2026-01-12 00:00:00'),
+(41, 17, 27, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-01-12 00:00:00'),
+(42, 17, 92, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-01-12 00:00:00'),
+(43, 18, 87, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 7000.00, '2026-02-13 00:00:00'),
+(44, 18, 40, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-13 00:00:00'),
+(45, 18, 93, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-02-13 00:00:00'),
+(46, 18, 3, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-02-13 00:00:00'),
+(47, 19, 9, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 10000.00, '2026-02-26 00:00:00'),
+(48, 20, 48, 9, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-04 00:00:00'),
+(49, 20, 49, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 8000.00, '2026-02-04 00:00:00'),
+(50, 20, 58, 3, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-02-04 00:00:00'),
+(51, 20, 11, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 5000.00, '2026-02-04 00:00:00'),
+(52, 21, 60, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-02-06 00:00:00'),
+(53, 21, 87, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-02-06 00:00:00'),
+(54, 21, 93, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-06 00:00:00'),
+(55, 22, 5, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 30000.00, '2026-01-06 00:00:00'),
+(56, 23, 58, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-07 00:00:00'),
+(57, 24, 30, 1, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-01-23 00:00:00'),
+(58, 24, 70, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 10000.00, '2026-01-23 00:00:00'),
+(59, 24, 28, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-01-23 00:00:00'),
+(60, 24, 97, 10, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-01-23 00:00:00'),
+(61, 25, 53, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-03-06 00:00:00'),
+(62, 25, 39, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-03-06 00:00:00'),
+(63, 26, 83, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-02-07 00:00:00'),
+(64, 26, 86, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 8000.00, '2026-02-07 00:00:00'),
+(65, 26, 49, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 8000.00, '2026-02-07 00:00:00'),
+(66, 27, 29, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 20000.00, '2026-01-12 00:00:00'),
+(67, 27, 39, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-01-12 00:00:00'),
+(68, 28, 32, 2, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 40000.00, '2026-02-21 00:00:00'),
+(69, 28, 33, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 10000.00, '2026-02-21 00:00:00'),
+(70, 28, 27, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-21 00:00:00'),
+(71, 28, 43, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-02-21 00:00:00'),
+(72, 29, 10, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-01-29 00:00:00'),
+(73, 30, 2, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-14 00:00:00'),
+(74, 30, 28, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-14 00:00:00'),
+(75, 30, 25, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-14 00:00:00'),
+(76, 32, 60, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-12 00:00:00'),
+(77, 32, 69, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 40000.00, '2026-04-12 00:00:00'),
+(78, 32, 84, 8, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-04-12 00:00:00'),
+(79, 32, 46, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-04-12 00:00:00'),
+(80, 34, 73, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-03-18 00:00:00'),
+(81, 35, 38, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-02-11 00:00:00'),
+(82, 35, 20, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-02-11 00:00:00'),
+(83, 35, 26, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-02-11 00:00:00'),
+(84, 35, 43, 6, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-02-11 00:00:00'),
+(85, 36, 22, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 35000.00, '2026-03-24 00:00:00'),
+(86, 36, 18, 3, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 20000.00, '2026-03-24 00:00:00'),
+(87, 36, 93, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-03-24 00:00:00'),
+(88, 38, 18, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 20000.00, '2026-04-12 00:00:00'),
+(89, 38, 81, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 7000.00, '2026-04-12 00:00:00'),
+(90, 38, 30, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-12 00:00:00'),
+(91, 38, 9, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-04-12 00:00:00'),
+(92, 39, 2, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-03-28 00:00:00'),
+(93, 39, 3, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-03-28 00:00:00'),
+(94, 39, 68, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-03-28 00:00:00'),
+(95, 39, 93, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-03-28 00:00:00'),
+(96, 40, 80, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 15000.00, '2026-04-22 00:00:00'),
+(97, 40, 68, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 18000.00, '2026-04-22 00:00:00'),
+(98, 42, 39, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-03-07 00:00:00'),
+(99, 42, 88, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-03-07 00:00:00'),
+(100, 43, 82, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-01-28 00:00:00'),
+(101, 44, 73, 1, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 35000.00, '2026-01-17 00:00:00'),
+(102, 44, 13, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 30000.00, '2026-01-17 00:00:00'),
+(103, 44, 68, 10, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 18000.00, '2026-01-17 00:00:00'),
+(104, 46, 23, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 35000.00, '2026-04-07 00:00:00'),
+(105, 47, 10, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-04-14 00:00:00'),
+(106, 47, 39, 7, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-04-14 00:00:00'),
+(107, 47, 21, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 12000.00, '2026-04-14 00:00:00'),
+(108, 47, 73, 7, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-04-14 00:00:00'),
+(109, 48, 13, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-03-12 00:00:00'),
+(110, 49, 100, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-01-07 00:00:00'),
+(111, 49, 42, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-01-07 00:00:00'),
+(112, 49, 4, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-01-07 00:00:00'),
+(113, 49, 82, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 12000.00, '2026-01-07 00:00:00'),
+(114, 50, 32, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 40000.00, '2026-02-17 00:00:00'),
+(115, 50, 92, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-02-17 00:00:00'),
+(116, 50, 10, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-17 00:00:00'),
+(117, 51, 40, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 12000.00, '2026-04-12 00:00:00'),
+(118, 52, 58, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 18000.00, '2026-03-31 00:00:00'),
+(119, 52, 72, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-31 00:00:00'),
+(120, 52, 66, 9, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 7000.00, '2026-03-31 00:00:00'),
+(121, 52, 53, 10, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-03-31 00:00:00'),
+(122, 53, 100, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 7000.00, '2026-01-11 00:00:00'),
+(123, 53, 11, 9, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 5000.00, '2026-01-11 00:00:00'),
+(124, 53, 93, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-01-11 00:00:00'),
+(125, 53, 72, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-01-11 00:00:00'),
+(126, 54, 56, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 20000.00, '2026-04-04 00:00:00'),
+(127, 54, 36, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-04-04 00:00:00'),
+(128, 56, 59, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-23 00:00:00'),
+(129, 56, 14, 1, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-03-23 00:00:00'),
+(130, 57, 43, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-01-31 00:00:00'),
+(131, 57, 56, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 20000.00, '2026-01-31 00:00:00'),
+(132, 57, 84, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-01-31 00:00:00'),
+(133, 57, 77, 6, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 12000.00, '2026-01-31 00:00:00'),
+(134, 58, 74, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-02-15 00:00:00'),
+(135, 58, 32, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 40000.00, '2026-02-15 00:00:00'),
+(136, 58, 42, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-15 00:00:00'),
+(137, 58, 49, 10, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 8000.00, '2026-02-15 00:00:00'),
+(138, 60, 57, 2, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-04-11 00:00:00'),
+(139, 60, 38, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-04-11 00:00:00'),
+(140, 61, 49, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 8000.00, '2026-03-23 00:00:00'),
+(141, 61, 10, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-03-23 00:00:00'),
+(142, 61, 58, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-03-23 00:00:00'),
+(143, 61, 77, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-03-23 00:00:00'),
+(144, 62, 14, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 10000.00, '2026-02-15 00:00:00'),
+(145, 63, 97, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-04-09 00:00:00'),
+(146, 63, 43, 5, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-04-09 00:00:00'),
+(147, 63, 56, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-04-09 00:00:00'),
+(148, 63, 14, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-04-09 00:00:00'),
+(149, 64, 45, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-04-02 00:00:00'),
+(150, 64, 4, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-04-02 00:00:00'),
+(151, 65, 45, 6, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 5000.00, '2026-04-12 00:00:00'),
+(152, 65, 40, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-04-12 00:00:00'),
+(153, 66, 41, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-02-20 00:00:00'),
+(154, 66, 9, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 10000.00, '2026-02-20 00:00:00'),
+(155, 66, 39, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-20 00:00:00'),
+(156, 66, 6, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-20 00:00:00'),
+(157, 67, 60, 3, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-02-04 00:00:00'),
+(158, 67, 30, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-02-04 00:00:00'),
+(159, 67, 52, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-04 00:00:00'),
+(160, 67, 81, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-04 00:00:00'),
+(161, 68, 27, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 15000.00, '2026-02-19 00:00:00'),
+(162, 68, 36, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-02-19 00:00:00'),
+(163, 69, 34, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-01-11 00:00:00'),
+(164, 70, 45, 6, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 5000.00, '2026-02-27 00:00:00'),
+(165, 72, 41, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-02-16 00:00:00'),
+(166, 72, 16, 2, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-02-16 00:00:00'),
+(167, 73, 74, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 15000.00, '2026-03-28 00:00:00'),
+(168, 73, 50, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-03-28 00:00:00'),
+(169, 74, 41, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-04-10 00:00:00'),
+(170, 74, 58, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 18000.00, '2026-04-10 00:00:00'),
+(171, 75, 53, 8, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-03-19 00:00:00'),
+(172, 75, 88, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-03-19 00:00:00'),
+(173, 75, 63, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-03-19 00:00:00'),
+(174, 75, 54, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-19 00:00:00'),
+(175, 76, 100, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-04-08 00:00:00'),
+(176, 76, 59, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-04-08 00:00:00'),
+(177, 77, 70, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-02-10 00:00:00'),
+(178, 77, 97, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-02-10 00:00:00'),
+(179, 77, 6, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-10 00:00:00'),
+(180, 78, 34, 2, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-03 00:00:00'),
+(181, 78, 45, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 5000.00, '2026-02-03 00:00:00'),
+(182, 78, 12, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-02-03 00:00:00'),
+(183, 78, 57, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-03 00:00:00'),
+(184, 79, 8, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-30 00:00:00'),
+(185, 79, 73, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-30 00:00:00'),
+(186, 81, 66, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-03-27 00:00:00'),
+(187, 81, 87, 1, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 7000.00, '2026-03-27 00:00:00'),
+(188, 81, 13, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 30000.00, '2026-03-27 00:00:00');
+
+-- ============================================================
+-- GIAO DICH XUAT KHO: rang buoc voi CHI_TIET_DON_THUOC.
+-- Moi cap (don thuoc, thuoc) chi duoc xuat kho mot lan.
+-- So luong xuat khong duoc vuot so luong da ke trong don.
+-- ============================================================
+ALTER TABLE giao_dich_kho_thuoc
+    ADD CONSTRAINT fk_giao_dich_xuat_don_thuoc_chi_tiet
+    FOREIGN KEY (tham_chieu_id, id_thuoc)
+    REFERENCES chi_tiet_don_thuoc(id_don_thuoc, id_thuoc)
+    ON UPDATE CASCADE ON DELETE RESTRICT;
+
+CREATE UNIQUE INDEX uq_giao_dich_xuat_don_thuoc
+    ON giao_dich_kho_thuoc(tham_chieu_id, id_thuoc)
+    WHERE loai_giao_dich = 'XUAT_DON_THUOC';
+
+-- Quy tac so_luong xuat <= so_luong ke duoc kiem tra tai NestJS PharmacyService.
+
 INSERT INTO giao_dich_kho_thuoc (id_giao_dich_kho_thuoc, id_thuoc, loai_giao_dich, so_luong, tham_chieu_id, ghi_chu, ngay_tao) VALUES
 (1, 1, 'NHAP_KHO', 240, NULL, 'Khoi tao ton kho dau ky', '2026-01-01 08:00:00'),
 (2, 2, 'NHAP_KHO', 152, NULL, 'Khoi tao ton kho dau ky', '2026-01-01 08:00:00'),
@@ -1817,268 +2196,23 @@ INSERT INTO giao_dich_kho_thuoc (id_giao_dich_kho_thuoc, id_thuoc, loai_giao_dic
 (286, 66, 'XUAT_DON_THUOC', 3, 81, 'Xuat thuoc theo don 81', '2026-03-27 17:00:00'),
 (287, 87, 'XUAT_DON_THUOC', 1, 81, 'Xuat thuoc theo don 81', '2026-03-27 17:00:00'),
 (288, 13, 'XUAT_DON_THUOC', 3, 81, 'Xuat thuoc theo don 81', '2026-03-27 17:00:00');
-INSERT INTO don_thuoc (id_don_thuoc, id_phieu_kham, id_benh_nhan, id_bac_si, ngay_ke_don, ghi_chu, trang_thai, ngay_tao, ngay_cap_nhat) VALUES
-(1, 1, 12, 3, '2026-02-15', 'Uong sau bua an', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
-(2, 2, 8, 1, '2026-01-07', '3 lan/ngay', 'Da ke', '2026-01-07 00:00:00', '2026-01-07 00:00:00'),
-(3, 3, 38, 1, '2026-03-02', '3 lan/ngay', 'Da ke', '2026-03-02 00:00:00', '2026-03-02 00:00:00'),
-(4, 4, 3, 5, '2026-02-27', '2 lan/ngay', 'Da ke', '2026-02-27 00:00:00', '2026-02-27 00:00:00'),
-(5, 5, 31, 4, '2026-02-08', '2 lan/ngay', 'Da ke', '2026-02-08 00:00:00', '2026-02-08 00:00:00'),
-(6, 6, 9, 3, '2026-01-11', 'Uong sau bua an', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
-(7, 7, 39, 5, '2026-03-21', 'Uong truoc khi ngu', 'Da ke', '2026-03-21 00:00:00', '2026-03-21 00:00:00'),
-(8, 8, 45, 1, '2026-02-07', 'Uong sau bua an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
-(9, 9, 29, 2, '2026-04-20', '2 lan/ngay', 'Da ke', '2026-04-20 00:00:00', '2026-04-20 00:00:00'),
-(10, 10, 27, 1, '2026-02-22', 'Khi can', 'Da ke', '2026-02-22 00:00:00', '2026-02-22 00:00:00'),
-(11, 11, 6, 1, '2026-01-20', 'Uong truoc khi ngu', 'Da ke', '2026-01-20 00:00:00', '2026-01-20 00:00:00'),
-(12, 12, 39, 3, '2026-02-15', 'Uong sau bua an', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
-(13, 13, 43, 4, '2026-02-15', 'Uong truoc khi ngu', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
-(14, 14, 43, 3, '2026-04-09', 'Khi can', 'Da ke', '2026-04-09 00:00:00', '2026-04-09 00:00:00'),
-(15, 15, 10, 5, '2026-02-13', '2 lan/ngay', 'Da ke', '2026-02-13 00:00:00', '2026-02-13 00:00:00'),
-(16, 16, 48, 1, '2026-03-26', '2 lan/ngay', 'Da ke', '2026-03-26 00:00:00', '2026-03-26 00:00:00'),
-(17, 17, 27, 4, '2026-01-12', '2 lan/ngay', 'Da ke', '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
-(18, 18, 47, 3, '2026-02-13', '2 lan/ngay', 'Da ke', '2026-02-13 00:00:00', '2026-02-13 00:00:00'),
-(19, 19, 29, 4, '2026-02-26', '2 lan/ngay', 'Da ke', '2026-02-26 00:00:00', '2026-02-26 00:00:00'),
-(20, 20, 28, 1, '2026-02-04', 'Uong sau bua an', 'Da ke', '2026-02-04 00:00:00', '2026-02-04 00:00:00'),
-(21, 21, 43, 3, '2026-02-06', 'Sau an', 'Da ke', '2026-02-06 00:00:00', '2026-02-06 00:00:00'),
-(22, 22, 4, 1, '2026-01-06', 'Uong sau bua an', 'Da ke', '2026-01-06 00:00:00', '2026-01-06 00:00:00'),
-(23, 23, 32, 4, '2026-02-07', 'Sau an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
-(24, 24, 46, 2, '2026-01-23', 'Khi can', 'Da ke', '2026-01-23 00:00:00', '2026-01-23 00:00:00'),
-(25, 25, 26, 1, '2026-03-06', 'Uong sau bua an', 'Da ke', '2026-03-06 00:00:00', '2026-03-06 00:00:00'),
-(26, 26, 21, 2, '2026-02-07', 'Sau an', 'Da ke', '2026-02-07 00:00:00', '2026-02-07 00:00:00'),
-(27, 27, 28, 5, '2026-01-12', 'Khi can', 'Da ke', '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
-(28, 28, 20, 3, '2026-02-21', 'Uong sau bua an', 'Da ke', '2026-02-21 00:00:00', '2026-02-21 00:00:00'),
-(29, 29, 33, 1, '2026-01-29', '2 lan/ngay', 'Da ke', '2026-01-29 00:00:00', '2026-01-29 00:00:00'),
-(30, 30, 10, 3, '2026-02-14', 'Uong truoc khi ngu', 'Da ke', '2026-02-14 00:00:00', '2026-02-14 00:00:00'),
-(32, 32, 33, 1, '2026-04-12', 'Uong truoc khi ngu', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
-(34, 34, 38, 5, '2026-03-18', 'Khi can', 'Da ke', '2026-03-18 00:00:00', '2026-03-18 00:00:00'),
-(35, 35, 10, 1, '2026-02-11', '2 lan/ngay', 'Da ke', '2026-02-11 00:00:00', '2026-02-11 00:00:00'),
-(36, 36, 46, 4, '2026-03-24', '3 lan/ngay', 'Da ke', '2026-03-24 00:00:00', '2026-03-24 00:00:00'),
-(38, 38, 7, 5, '2026-04-12', 'Sau an', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
-(39, 39, 47, 5, '2026-03-28', '2 lan/ngay', 'Da ke', '2026-03-28 00:00:00', '2026-03-28 00:00:00'),
-(40, 40, 38, 2, '2026-04-22', 'Uong sau bua an', 'Da ke', '2026-04-22 00:00:00', '2026-04-22 00:00:00'),
-(42, 42, 20, 2, '2026-03-07', 'Uong sau bua an', 'Da ke', '2026-03-07 00:00:00', '2026-03-07 00:00:00'),
-(43, 43, 15, 2, '2026-01-28', 'Khi can', 'Da ke', '2026-01-28 00:00:00', '2026-01-28 00:00:00'),
-(44, 44, 11, 2, '2026-01-17', 'Khi can', 'Da ke', '2026-01-17 00:00:00', '2026-01-17 00:00:00'),
-(46, 46, 16, 3, '2026-04-07', 'Uong truoc khi ngu', 'Da ke', '2026-04-07 00:00:00', '2026-04-07 00:00:00'),
-(47, 47, 44, 5, '2026-04-14', '3 lan/ngay', 'Da ke', '2026-04-14 00:00:00', '2026-04-14 00:00:00'),
-(48, 48, 6, 2, '2026-03-12', 'Uong truoc khi ngu', 'Da ke', '2026-03-12 00:00:00', '2026-03-12 00:00:00'),
-(49, 49, 25, 1, '2026-01-07', '2 lan/ngay', 'Da ke', '2026-01-07 00:00:00', '2026-01-07 00:00:00'),
-(50, 50, 7, 3, '2026-02-17', '2 lan/ngay', 'Da ke', '2026-02-17 00:00:00', '2026-02-17 00:00:00'),
-(51, 51, 19, 4, '2026-04-12', 'Sau an', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
-(52, 52, 40, 1, '2026-03-31', 'Uong sau bua an', 'Da ke', '2026-03-31 00:00:00', '2026-03-31 00:00:00'),
-(53, 53, 10, 5, '2026-01-11', 'Khi can', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
-(54, 54, 50, 3, '2026-04-04', 'Sau an', 'Da ke', '2026-04-04 00:00:00', '2026-04-04 00:00:00'),
-(56, 56, 8, 4, '2026-03-23', 'Khi can', 'Da ke', '2026-03-23 00:00:00', '2026-03-23 00:00:00'),
-(57, 57, 1, 5, '2026-01-31', 'Uong truoc khi ngu', 'Da ke', '2026-01-31 00:00:00', '2026-01-31 00:00:00'),
-(58, 58, 43, 1, '2026-02-15', '3 lan/ngay', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
-(60, 60, 31, 1, '2026-04-11', '3 lan/ngay', 'Da ke', '2026-04-11 00:00:00', '2026-04-11 00:00:00'),
-(61, 61, 48, 1, '2026-03-23', 'Uong sau bua an', 'Da ke', '2026-03-23 00:00:00', '2026-03-23 00:00:00'),
-(62, 62, 47, 1, '2026-02-15', '2 lan/ngay', 'Da ke', '2026-02-15 00:00:00', '2026-02-15 00:00:00'),
-(63, 63, 3, 3, '2026-04-09', 'Sau an', 'Da ke', '2026-04-09 00:00:00', '2026-04-09 00:00:00'),
-(64, 64, 13, 1, '2026-04-02', 'Khi can', 'Da ke', '2026-04-02 00:00:00', '2026-04-02 00:00:00'),
-(65, 65, 20, 5, '2026-04-12', '3 lan/ngay', 'Da ke', '2026-04-12 00:00:00', '2026-04-12 00:00:00'),
-(66, 66, 3, 2, '2026-02-20', 'Khi can', 'Da ke', '2026-02-20 00:00:00', '2026-02-20 00:00:00'),
-(67, 67, 26, 4, '2026-02-04', 'Uong truoc khi ngu', 'Da ke', '2026-02-04 00:00:00', '2026-02-04 00:00:00'),
-(68, 68, 45, 4, '2026-02-19', '3 lan/ngay', 'Da ke', '2026-02-19 00:00:00', '2026-02-19 00:00:00'),
-(69, 69, 19, 3, '2026-01-11', 'Khi can', 'Da ke', '2026-01-11 00:00:00', '2026-01-11 00:00:00'),
-(70, 70, 45, 4, '2026-02-27', '2 lan/ngay', 'Da ke', '2026-02-27 00:00:00', '2026-02-27 00:00:00'),
-(72, 72, 10, 5, '2026-02-16', '3 lan/ngay', 'Da ke', '2026-02-16 00:00:00', '2026-02-16 00:00:00'),
-(73, 73, 5, 2, '2026-03-28', 'Khi can', 'Da ke', '2026-03-28 00:00:00', '2026-03-28 00:00:00'),
-(74, 74, 37, 1, '2026-04-10', 'Uong sau bua an', 'Da ke', '2026-04-10 00:00:00', '2026-04-10 00:00:00'),
-(75, 75, 24, 4, '2026-03-19', 'Khi can', 'Da ke', '2026-03-19 00:00:00', '2026-03-19 00:00:00'),
-(76, 76, 24, 4, '2026-04-08', 'Uong truoc khi ngu', 'Da ke', '2026-04-08 00:00:00', '2026-04-08 00:00:00'),
-(77, 77, 2, 2, '2026-02-10', '2 lan/ngay', 'Da ke', '2026-02-10 00:00:00', '2026-02-10 00:00:00'),
-(78, 78, 40, 3, '2026-02-03', 'Sau an', 'Da ke', '2026-02-03 00:00:00', '2026-02-03 00:00:00'),
-(79, 79, 9, 1, '2026-03-30', 'Uong sau bua an', 'Da ke', '2026-03-30 00:00:00', '2026-03-30 00:00:00'),
-(81, 81, 35, 3, '2026-03-27', '2 lan/ngay', 'Da ke', '2026-03-27 00:00:00', '2026-03-27 00:00:00');
-INSERT INTO chi_tiet_don_thuoc (id_chi_tiet_don_thuoc, id_don_thuoc, id_thuoc, so_luong, lieu_dung, tan_suat, so_ngay_dung, duong_dung, huong_dan, don_gia_tai_thoi_diem_ke, ngay_tao) VALUES
-(1, 1, 69, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 40000.00, '2026-02-15 00:00:00'),
-(2, 1, 44, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 40000.00, '2026-02-15 00:00:00'),
-(3, 1, 70, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 10000.00, '2026-02-15 00:00:00'),
-(4, 1, 46, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 18000.00, '2026-02-15 00:00:00'),
-(5, 2, 89, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-01-07 00:00:00'),
-(6, 2, 91, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 5000.00, '2026-01-07 00:00:00'),
-(7, 3, 51, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 7000.00, '2026-03-02 00:00:00'),
-(8, 3, 45, 5, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 5000.00, '2026-03-02 00:00:00'),
-(9, 3, 99, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 8000.00, '2026-03-02 00:00:00'),
-(10, 3, 19, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 40000.00, '2026-03-02 00:00:00'),
-(11, 4, 72, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 35000.00, '2026-02-27 00:00:00'),
-(12, 4, 90, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-02-27 00:00:00'),
-(13, 4, 35, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-27 00:00:00'),
-(14, 5, 82, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-02-08 00:00:00'),
-(15, 5, 30, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-02-08 00:00:00'),
-(16, 6, 71, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-01-11 00:00:00'),
-(17, 7, 37, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-03-21 00:00:00'),
-(18, 7, 83, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 35000.00, '2026-03-21 00:00:00'),
-(19, 7, 8, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-03-21 00:00:00'),
-(20, 8, 51, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-07 00:00:00'),
-(21, 9, 43, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-04-20 00:00:00'),
-(22, 10, 25, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-22 00:00:00'),
-(23, 10, 15, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-02-22 00:00:00'),
-(24, 10, 43, 5, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-02-22 00:00:00'),
-(25, 11, 23, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 35000.00, '2026-01-20 00:00:00'),
-(26, 11, 79, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-01-20 00:00:00'),
-(27, 12, 62, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-02-15 00:00:00'),
-(28, 12, 42, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 20000.00, '2026-02-15 00:00:00'),
-(29, 13, 75, 1, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 40000.00, '2026-02-15 00:00:00'),
-(30, 13, 93, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-02-15 00:00:00'),
-(31, 13, 74, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-02-15 00:00:00'),
-(32, 14, 89, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-09 00:00:00'),
-(33, 14, 16, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-04-09 00:00:00'),
-(34, 14, 82, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 12000.00, '2026-04-09 00:00:00'),
-(35, 15, 54, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-02-13 00:00:00'),
-(36, 15, 90, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-13 00:00:00'),
-(37, 15, 71, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-02-13 00:00:00'),
-(38, 16, 8, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-26 00:00:00'),
-(39, 17, 15, 10, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-01-12 00:00:00'),
-(40, 17, 88, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 15000.00, '2026-01-12 00:00:00'),
-(41, 17, 27, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-01-12 00:00:00'),
-(42, 17, 92, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-01-12 00:00:00'),
-(43, 18, 87, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 7000.00, '2026-02-13 00:00:00'),
-(44, 18, 40, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-13 00:00:00'),
-(45, 18, 93, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-02-13 00:00:00'),
-(46, 18, 3, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-02-13 00:00:00'),
-(47, 19, 9, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 10000.00, '2026-02-26 00:00:00'),
-(48, 20, 48, 9, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-04 00:00:00'),
-(49, 20, 49, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 8000.00, '2026-02-04 00:00:00'),
-(50, 20, 58, 3, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-02-04 00:00:00'),
-(51, 20, 11, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 5000.00, '2026-02-04 00:00:00'),
-(52, 21, 60, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-02-06 00:00:00'),
-(53, 21, 87, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-02-06 00:00:00'),
-(54, 21, 93, 4, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-06 00:00:00'),
-(55, 22, 5, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 30000.00, '2026-01-06 00:00:00'),
-(56, 23, 58, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-07 00:00:00'),
-(57, 24, 30, 1, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-01-23 00:00:00'),
-(58, 24, 70, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 10000.00, '2026-01-23 00:00:00'),
-(59, 24, 28, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 25000.00, '2026-01-23 00:00:00'),
-(60, 24, 97, 10, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-01-23 00:00:00'),
-(61, 25, 53, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-03-06 00:00:00'),
-(62, 25, 39, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-03-06 00:00:00'),
-(63, 26, 83, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-02-07 00:00:00'),
-(64, 26, 86, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 8000.00, '2026-02-07 00:00:00'),
-(65, 26, 49, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 8000.00, '2026-02-07 00:00:00'),
-(66, 27, 29, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 20000.00, '2026-01-12 00:00:00'),
-(67, 27, 39, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-01-12 00:00:00'),
-(68, 28, 32, 2, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 40000.00, '2026-02-21 00:00:00'),
-(69, 28, 33, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 10000.00, '2026-02-21 00:00:00'),
-(70, 28, 27, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-21 00:00:00'),
-(71, 28, 43, 4, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-02-21 00:00:00'),
-(72, 29, 10, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-01-29 00:00:00'),
-(73, 30, 2, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-14 00:00:00'),
-(74, 30, 28, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-14 00:00:00'),
-(75, 30, 25, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-14 00:00:00'),
-(76, 32, 60, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-12 00:00:00'),
-(77, 32, 69, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 40000.00, '2026-04-12 00:00:00'),
-(78, 32, 84, 8, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-04-12 00:00:00'),
-(79, 32, 46, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-04-12 00:00:00'),
-(80, 34, 73, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-03-18 00:00:00'),
-(81, 35, 38, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-02-11 00:00:00'),
-(82, 35, 20, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-02-11 00:00:00'),
-(83, 35, 26, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-02-11 00:00:00'),
-(84, 35, 43, 6, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-02-11 00:00:00'),
-(85, 36, 22, 9, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 35000.00, '2026-03-24 00:00:00'),
-(86, 36, 18, 3, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 20000.00, '2026-03-24 00:00:00'),
-(87, 36, 93, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-03-24 00:00:00'),
-(88, 38, 18, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 20000.00, '2026-04-12 00:00:00'),
-(89, 38, 81, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 7000.00, '2026-04-12 00:00:00'),
-(90, 38, 30, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-04-12 00:00:00'),
-(91, 38, 9, 1, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-04-12 00:00:00'),
-(92, 39, 2, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-03-28 00:00:00'),
-(93, 39, 3, 5, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-03-28 00:00:00'),
-(94, 39, 68, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-03-28 00:00:00'),
-(95, 39, 93, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-03-28 00:00:00'),
-(96, 40, 80, 5, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 15000.00, '2026-04-22 00:00:00'),
-(97, 40, 68, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 18000.00, '2026-04-22 00:00:00'),
-(98, 42, 39, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-03-07 00:00:00'),
-(99, 42, 88, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-03-07 00:00:00'),
-(100, 43, 82, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-01-28 00:00:00'),
-(101, 44, 73, 1, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 35000.00, '2026-01-17 00:00:00'),
-(102, 44, 13, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 30000.00, '2026-01-17 00:00:00'),
-(103, 44, 68, 10, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 18000.00, '2026-01-17 00:00:00'),
-(104, 46, 23, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 35000.00, '2026-04-07 00:00:00'),
-(105, 47, 10, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-04-14 00:00:00'),
-(106, 47, 39, 7, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-04-14 00:00:00'),
-(107, 47, 21, 9, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 12000.00, '2026-04-14 00:00:00'),
-(108, 47, 73, 7, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 35000.00, '2026-04-14 00:00:00'),
-(109, 48, 13, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-03-12 00:00:00'),
-(110, 49, 100, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-01-07 00:00:00'),
-(111, 49, 42, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-01-07 00:00:00'),
-(112, 49, 4, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-01-07 00:00:00'),
-(113, 49, 82, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 12000.00, '2026-01-07 00:00:00'),
-(114, 50, 32, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 40000.00, '2026-02-17 00:00:00'),
-(115, 50, 92, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-02-17 00:00:00'),
-(116, 50, 10, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-17 00:00:00'),
-(117, 51, 40, 8, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 12000.00, '2026-04-12 00:00:00'),
-(118, 52, 58, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 18000.00, '2026-03-31 00:00:00'),
-(119, 52, 72, 2, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-31 00:00:00'),
-(120, 52, 66, 9, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 7000.00, '2026-03-31 00:00:00'),
-(121, 52, 53, 10, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-03-31 00:00:00'),
-(122, 53, 100, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 7000.00, '2026-01-11 00:00:00'),
-(123, 53, 11, 9, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 5000.00, '2026-01-11 00:00:00'),
-(124, 53, 93, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-01-11 00:00:00'),
-(125, 53, 72, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-01-11 00:00:00'),
-(126, 54, 56, 7, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 20000.00, '2026-04-04 00:00:00'),
-(127, 54, 36, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-04-04 00:00:00'),
-(128, 56, 59, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-23 00:00:00'),
-(129, 56, 14, 1, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-03-23 00:00:00'),
-(130, 57, 43, 3, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 25000.00, '2026-01-31 00:00:00'),
-(131, 57, 56, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 20000.00, '2026-01-31 00:00:00'),
-(132, 57, 84, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-01-31 00:00:00'),
-(133, 57, 77, 6, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 12000.00, '2026-01-31 00:00:00'),
-(134, 58, 74, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-02-15 00:00:00'),
-(135, 58, 32, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 40000.00, '2026-02-15 00:00:00'),
-(136, 58, 42, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 20000.00, '2026-02-15 00:00:00'),
-(137, 58, 49, 10, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 8000.00, '2026-02-15 00:00:00'),
-(138, 60, 57, 2, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 15000.00, '2026-04-11 00:00:00'),
-(139, 60, 38, 8, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 10000.00, '2026-04-11 00:00:00'),
-(140, 61, 49, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 8000.00, '2026-03-23 00:00:00'),
-(141, 61, 10, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 18000.00, '2026-03-23 00:00:00'),
-(142, 61, 58, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-03-23 00:00:00'),
-(143, 61, 77, 7, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-03-23 00:00:00'),
-(144, 62, 14, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 10000.00, '2026-02-15 00:00:00'),
-(145, 63, 97, 1, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 25000.00, '2026-04-09 00:00:00'),
-(146, 63, 43, 5, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-04-09 00:00:00'),
-(147, 63, 56, 9, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-04-09 00:00:00'),
-(148, 63, 14, 9, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-04-09 00:00:00'),
-(149, 64, 45, 8, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 5000.00, '2026-04-02 00:00:00'),
-(150, 64, 4, 5, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 10000.00, '2026-04-02 00:00:00'),
-(151, 65, 45, 6, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 5000.00, '2026-04-12 00:00:00'),
-(152, 65, 40, 4, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-04-12 00:00:00'),
-(153, 66, 41, 2, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-02-20 00:00:00'),
-(154, 66, 9, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 10000.00, '2026-02-20 00:00:00'),
-(155, 66, 39, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-20 00:00:00'),
-(156, 66, 6, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-20 00:00:00'),
-(157, 67, 60, 3, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-02-04 00:00:00'),
-(158, 67, 30, 7, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 30000.00, '2026-02-04 00:00:00'),
-(159, 67, 52, 1, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 18000.00, '2026-02-04 00:00:00'),
-(160, 67, 81, 10, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 7000.00, '2026-02-04 00:00:00'),
-(161, 68, 27, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 15000.00, '2026-02-19 00:00:00'),
-(162, 68, 36, 2, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 12000.00, '2026-02-19 00:00:00'),
-(163, 69, 34, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 25000.00, '2026-01-11 00:00:00'),
-(164, 70, 45, 6, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 5000.00, '2026-02-27 00:00:00'),
-(165, 72, 41, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 30000.00, '2026-02-16 00:00:00'),
-(166, 72, 16, 2, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 30000.00, '2026-02-16 00:00:00'),
-(167, 73, 74, 7, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 15000.00, '2026-03-28 00:00:00'),
-(168, 73, 50, 8, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-03-28 00:00:00'),
-(169, 74, 41, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 30000.00, '2026-04-10 00:00:00'),
-(170, 74, 58, 6, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 18000.00, '2026-04-10 00:00:00'),
-(171, 75, 53, 8, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-03-19 00:00:00'),
-(172, 75, 88, 3, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 15000.00, '2026-03-19 00:00:00'),
-(173, 75, 63, 10, '1 vien/ngay', '1 vien/ngay', 5, 'Uong', '1 vien/ngay', 12000.00, '2026-03-19 00:00:00'),
-(174, 75, 54, 4, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 35000.00, '2026-03-19 00:00:00'),
-(175, 76, 100, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 7000.00, '2026-04-08 00:00:00'),
-(176, 76, 59, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-04-08 00:00:00'),
-(177, 77, 70, 8, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 10000.00, '2026-02-10 00:00:00'),
-(178, 77, 97, 4, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 25000.00, '2026-02-10 00:00:00'),
-(179, 77, 6, 2, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 12000.00, '2026-02-10 00:00:00'),
-(180, 78, 34, 2, '2 vien/ngay', '2 vien/ngay', 5, 'Uong', '2 vien/ngay', 25000.00, '2026-02-03 00:00:00'),
-(181, 78, 45, 4, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 5000.00, '2026-02-03 00:00:00'),
-(182, 78, 12, 10, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 20000.00, '2026-02-03 00:00:00'),
-(183, 78, 57, 6, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 15000.00, '2026-02-03 00:00:00'),
-(184, 79, 8, 6, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-30 00:00:00'),
-(185, 79, 73, 5, 'Sau an', 'Theo chi dinh', 5, 'Uong', 'Sau an', 35000.00, '2026-03-30 00:00:00'),
-(186, 81, 66, 3, '1 chai/ngay', '1 chai/ngay', 5, 'Uong', '1 chai/ngay', 7000.00, '2026-03-27 00:00:00'),
-(187, 81, 87, 1, '1 goi/ngay', '1 goi/ngay', 5, 'Uong', '1 goi/ngay', 7000.00, '2026-03-27 00:00:00'),
-(188, 81, 13, 3, 'Truoc an', 'Theo chi dinh', 5, 'Uong', 'Truoc an', 30000.00, '2026-03-27 00:00:00');
+
+-- ============================================================
+-- DONG BO DU LIEU MAU TON KHO (CHI CHAY KHI IMPORT FILE DEMO)
+-- Trong runtime, NestJS PharmacyService + TypeORM Transaction cap nhat Thuoc va
+-- GiaoDichKhoThuoc dong thoi; PostgreSQL khong dung trigger de xu ly nghiep vu kho.
+-- ============================================================
+UPDATE thuoc t
+SET so_luong_ton = COALESCE((
+    SELECT SUM(CASE
+        WHEN g.loai_giao_dich = 'NHAP_KHO' THEN g.so_luong
+        WHEN g.loai_giao_dich = 'XUAT_DON_THUOC' THEN -g.so_luong
+        ELSE 0
+    END)
+    FROM giao_dich_kho_thuoc g
+    WHERE g.id_thuoc = t.id_thuoc
+), 0);
+
 INSERT INTO hoa_don (id_hoa_don, id_phieu_kham, id_benh_nhan, ngay_lap, phi_kham, tien_thuoc, tong_tien, trang_thai_thanh_toan, ngay_tao, ngay_cap_nhat) VALUES
 ('HD001', 1, 12, '2026-02-15', 100000.00, 722000.00, 822000.00, 'Chua thanh toan', '2026-02-15 17:00:00', '2026-02-15 17:00:00'),
 ('HD002', 2, 8, '2026-01-07', 100000.00, 280000.00, 380000.00, 'Chua thanh toan', '2026-01-07 17:00:00', '2026-01-07 17:00:00'),
@@ -2309,7 +2443,7 @@ INSERT INTO thong_bao (id_thong_bao, id_tai_khoan, id_lich_hen, loai, kenh, tieu
 INSERT INTO chi_so_thong_ke (id_chi_so_thong_ke, loai_chi_so, du_lieu_thong_ke, thoi_gian_tinh) VALUES
 (1, 'TONG_BENH_NHAN', '{"tongBenhNhan": 50}', '2026-04-22 23:59:59'),
 (2, 'TONG_BAC_SI', '{"tongBacSi": 5}', '2026-04-22 23:59:59'),
-(3, 'THONG_KE_LICH_HEN', '{"Da kham": 81, "Cho kham": 26, "Huy": 13}', '2026-04-22 23:59:59'),
+(3, 'THONG_KE_LICH_HEN', '{"Hoan thanh": 81, "Da xac nhan": 26, "Huy": 13}', '2026-04-22 23:59:59'),
 (4, 'THONG_KE_HOA_DON', '{"soHoaDon": 72, "tongDoanhThu": 27641000.0}', '2026-04-22 23:59:59');
 
 -- Dong bo sequence sau khi chen ID mau thu cong.
@@ -2335,4 +2469,6 @@ SELECT setval(pg_get_serial_sequence('thanh_toan', 'id_thanh_toan'), COALESCE((S
 SELECT setval(pg_get_serial_sequence('thong_bao', 'id_thong_bao'), COALESCE((SELECT MAX(id_thong_bao) FROM thong_bao), 0) + 1, FALSE);
 SELECT setval(pg_get_serial_sequence('chi_so_thong_ke', 'id_chi_so_thong_ke'), COALESCE((SELECT MAX(id_chi_so_thong_ke) FROM chi_so_thong_ke), 0) + 1, FALSE);
 
--- Ket thuc khoi tao CSDL PostgreSQL qlphongkham.
+-- Ket thuc khoi tao CSDL PostgreSQL qlkhambenh.
+
+COMMIT;
