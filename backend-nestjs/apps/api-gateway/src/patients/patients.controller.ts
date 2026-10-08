@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +22,10 @@ import {
   CurrentUser,
   CreatePatientDto,
   UpdatePatientDto,
+  Roles,
+  UserRole,
 } from '@app/common';
+import { RolesGuard } from '../guards/roles.guard';
 
 @ApiTags('Patients')
 @ApiBearerAuth()
@@ -33,6 +37,8 @@ export class PatientsController {
   ) {}
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy danh sách bệnh nhân' })
   async getAll(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -41,6 +47,8 @@ export class PatientsController {
   }
 
   @Get('search')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Tìm kiếm bệnh nhân' })
   async search(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -49,14 +57,21 @@ export class PatientsController {
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy chi tiết bệnh nhân theo ID' })
-  async getById(@Param('id', ParseIntPipe) id: number) {
+  async getById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
     return await firstValueFrom(
-      this.patientClient.send(MSG.PATIENT_GET_BY_ID, { id }),
+      this.patientClient.send(MSG.PATIENT_GET_BY_ID, { id, user }),
     );
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Thêm mới hồ sơ bệnh nhân' })
   async create(@Body() dto: CreatePatientDto) {
     try {
@@ -67,6 +82,8 @@ export class PatientsController {
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Cập nhật hồ sơ bệnh nhân' })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -80,6 +97,8 @@ export class PatientsController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Xóa hồ sơ bệnh nhân' })
   async delete(@Param('id', ParseIntPipe) id: number) {
     try {

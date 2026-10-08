@@ -48,9 +48,6 @@ export const appRouter = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
-          { path: "/patients", element: <PatientsListPage /> },
-          { path: "/pharmacy", element: <PharmacyPage /> },
-          { path: "/medical-records", element: <MedicalRecordsPage /> },
           { path: "/appointments", element: <AppointmentsPage /> },
           { path: "/billing", element: <BillingPage /> },
           { path: "/accounts", element: <AccountsPage /> },
@@ -72,6 +69,9 @@ export const appRouter = createBrowserRouter([
       {
         element: <RoleBasedLayout />,
         children: [
+          { path: "/patients", element: <PatientsListPage /> },
+          { path: "/pharmacy", element: <PharmacyPage /> },
+          { path: "/medical-records", element: <MedicalRecordsPage /> },
           { path: "/medical-history", element: <MedicalHistoryPage /> },
           { path: "/reception", element: <ReceptionPage /> },
         ],
@@ -86,20 +86,6 @@ export const appRouter = createBrowserRouter([
         element: <RoleBasedLayout />,
         children: [
           { path: "/notifications", element: <NotificationsPage /> },
-        ],
-      },
-    ],
-  },
-
-  {
-    element: <ProtectedRoute roles={roles.doctor} />,
-    children: [
-      {
-        element: <AppLayout />,
-        children: [
-          { path: "/patients", element: <PatientsListPage /> },
-          { path: "/pharmacy", element: <PharmacyPage /> },
-          { path: "/medical-records", element: <MedicalRecordsPage /> },
         ],
       },
     ],

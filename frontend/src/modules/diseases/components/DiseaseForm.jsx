@@ -5,7 +5,6 @@ const EMPTY_FORM = {
   name: "",
   group: "",
   description: "",
-  status: "Active",
 };
 
 export function DiseaseForm({ initialValue, saving, onSubmit, onCancel }) {
@@ -17,7 +16,6 @@ export function DiseaseForm({ initialValue, saving, onSubmit, onCancel }) {
       name: initialValue?.name || "",
       group: initialValue?.group || "",
       description: initialValue?.description || "",
-      status: initialValue?.status || "Active",
     });
   }, [initialValue]);
 
@@ -32,7 +30,6 @@ export function DiseaseForm({ initialValue, saving, onSubmit, onCancel }) {
       name: form.name.trim(),
       group: form.group.trim(),
       description: form.description.trim(),
-      status: form.status,
     });
   }
 
@@ -70,17 +67,6 @@ export function DiseaseForm({ initialValue, saving, onSubmit, onCancel }) {
             onChange={(event) => updateField("group", event.target.value)}
             placeholder="Ví dụ: Hô hấp"
           />
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Trạng thái
-          <select
-            className="form-input"
-            value={form.status}
-            onChange={(event) => updateField("status", event.target.value)}
-          >
-            <option value="Active">Hoạt động</option>
-            <option value="Inactive">Ngừng hoạt động</option>
-          </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700 md:col-span-2">
           Mô tả

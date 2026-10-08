@@ -44,7 +44,7 @@ export function ResourceForm({ config, initialValue, mode, lookups, onSubmit, on
         .filter((item) => item.MaThuoc && item.SoLuong && item.LieuDung);
     }
     enrichOwnership(payload, config, lookups);
-    return payload;
+    return config.toApiPayload ? config.toApiPayload(payload) : payload;
   }
 
   function handleSubmit(event) {

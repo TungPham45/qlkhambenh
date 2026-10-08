@@ -42,16 +42,18 @@ export class AppointmentServiceService {
       .leftJoinAndSelect('appt.doctor', 'doctor');
 
     // Role-based filtering
-    if (user?.role === UserRole.NGUOI_DUNG && user?.patientId) {
+    if (user?.role === UserRole.NGUOI_DUNG) {
+      if (!user?.patientId) throw new ForbiddenException('Tài khoản chưa được liên kết với bệnh nhân');
       qb.andWhere('appt.patientId = :patientId', { patientId: user.patientId });
-    } else if (query?.MaBN) {
-      qb.andWhere('appt.patientId = :patientId', { patientId: query.MaBN });
-    }
-
-    if (user?.role === UserRole.BAC_SI && user?.staffId) {
+    } else if (user?.role === UserRole.BAC_SI) {
+      if (!user?.staffId) throw new ForbiddenException('Tài khoản chưa được liên kết với bác sĩ');
       qb.andWhere('appt.doctorId = :doctorId', { doctorId: user.staffId });
-    } else if (query?.MaBacSi) {
-      qb.andWhere('appt.doctorId = :doctorId', { doctorId: query.MaBacSi });
+      if (query?.MaBN) qb.andWhere('appt.patientId = :patientId', { patientId: query.MaBN });
+    } else if (user?.role === UserRole.ADMIN) {
+      if (query?.MaBN) qb.andWhere('appt.patientId = :patientId', { patientId: query.MaBN });
+      if (query?.MaBacSi) qb.andWhere('appt.doctorId = :doctorId', { doctorId: query.MaBacSi });
+    } else {
+      throw new ForbiddenException('Bạn không có quyền xem lịch khám');
     }
 
     if (query?.date) {
@@ -80,12 +82,13 @@ export class AppointmentServiceService {
     };
   }
 
-  async getById(id: number) {
+  async getById(id: number, user: any) {
     const appt = await this.apptRepo.findOne({
       where: { id },
       relations: ['patient', 'doctor'],
     });
     if (!appt) throw new NotFoundException('Không tìm thấy lịch khám');
+    this.assertCanAccessAppointment(appt, user);
     return this.formatAppointment(appt);
   }
 
@@ -143,6 +146,12 @@ export class AppointmentServiceService {
     if (user?.role === UserRole.NGUOI_DUNG) {
       throw new ForbiddenException('Bệnh nhân không có quyền sửa thông tin lịch khám');
     }
+    if (
+      user?.role === UserRole.BAC_SI &&
+      Number(appt.doctorId) !== Number(user.staffId)
+    ) {
+      throw new ForbiddenException('Bác sĩ chỉ được cập nhật lịch được phân công');
+    }
 
     if (dto.appointmentTime || dto.appointmentDate || dto.doctorId) {
       const docId = dto.doctorId || appt.doctorId;
@@ -179,6 +188,12 @@ export class AppointmentServiceService {
         throw new ForbiddenException('Không có quyền thao tác trên lịch khám này');
       }
     }
+    if (
+      user?.role === UserRole.BAC_SI &&
+      Number(appt.doctorId) !== Number(user.staffId)
+    ) {
+      throw new ForbiddenException('Bác sĩ chỉ được cập nhật lịch được phân công');
+    }
 
     const previousStatus = appt.status;
     appt.status = dto.status;
@@ -192,6 +207,10 @@ export class AppointmentServiceService {
   async delete(id: number, user: any) {
     const appt = await this.apptRepo.findOne({ where: { id } });
     if (!appt) throw new NotFoundException('Không tìm thấy lịch khám');
+
+    if (user?.role === UserRole.BAC_SI) {
+      throw new ForbiddenException('Bác sĩ không có quyền xóa lịch khám');
+    }
 
     if (user?.role === UserRole.NGUOI_DUNG) {
       const previousStatus = appt.status;
@@ -207,8 +226,18 @@ export class AppointmentServiceService {
     return { success: true, message: 'Đã xóa lịch khám' };
   }
 
-  async getByDoctor(doctorId: number, query: any) {
-    return await this.getAll({ ...query, MaBacSi: doctorId }, null);
+  async getByDoctor(doctorId: number, query: any, user: any) {
+    if (user?.role === UserRole.BAC_SI && Number(doctorId) !== Number(user.staffId)) {
+      throw new ForbiddenException('Bác sĩ không được xem lịch của bác sĩ khác');
+    }
+    return await this.getAll({ ...query, MaBacSi: doctorId }, user);
+  }
+
+  private assertCanAccessAppointment(appointment: Appointment, user: any) {
+    if (user?.role === UserRole.ADMIN) return;
+    if (user?.role === UserRole.BAC_SI && Number(appointment.doctorId) === Number(user.staffId)) return;
+    if (user?.role === UserRole.NGUOI_DUNG && Number(appointment.patientId) === Number(user.patientId)) return;
+    throw new ForbiddenException('Bạn không có quyền xem lịch khám này');
   }
 
   /**

@@ -34,6 +34,8 @@ export class MedicalRecordsController {
   ) {}
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy danh sách phiếu khám / bệnh án' })
   async getAll(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -68,26 +70,42 @@ export class MedicalRecordsController {
   }
 
   @Get('doctor/:id/patients')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Lấy danh sách bệnh án theo bác sĩ' })
-  async getByDoctor(@Param('id', ParseIntPipe) doctorId: number, @Query() query: any) {
+  async getByDoctor(
+    @Param('id', ParseIntPipe) doctorId: number,
+    @Query() query: any,
+    @CurrentUser() user: any,
+  ) {
     return await firstValueFrom(
-      this.medClient.send(MSG.MED_REC_GET_BY_DOCTOR, { doctorId, query }),
+      this.medClient.send(MSG.MED_REC_GET_BY_DOCTOR, { doctorId, query, user }),
     );
   }
 
   @Get('appointments/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy phiếu khám theo mã lịch hẹn' })
-  async getByAppointment(@Param('id', ParseIntPipe) appointmentId: number) {
+  async getByAppointment(
+    @Param('id', ParseIntPipe) appointmentId: number,
+    @CurrentUser() user: any,
+  ) {
     return await firstValueFrom(
-      this.medClient.send(MSG.MED_REC_GET_BY_APPT, { appointmentId }),
+      this.medClient.send(MSG.MED_REC_GET_BY_APPT, { appointmentId, user }),
     );
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy chi tiết phiếu khám' })
-  async getById(@Param('id', ParseIntPipe) id: number) {
+  async getById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
     return await firstValueFrom(
-      this.medClient.send(MSG.MED_REC_GET_BY_ID, { id }),
+      this.medClient.send(MSG.MED_REC_GET_BY_ID, { id, user }),
     );
   }
 

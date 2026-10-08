@@ -53,16 +53,34 @@ export class MedicalRecordServiceService {
       .leftJoinAndSelect('items.drug', 'drug')
       .leftJoinAndSelect('rec.invoice', 'invoice');
 
-    if (user?.role === UserRole.NGUOI_DUNG && user?.patientId) {
-      qb.andWhere('rec.patientId = :patientId', { patientId: user.patientId });
-    } else if (query?.MaBN) {
+    this.applyRecordScope(qb, user);
+
+    if (user?.role === UserRole.ADMIN && query?.MaBN) {
       qb.andWhere('rec.patientId = :patientId', { patientId: query.MaBN });
     }
-
-    if (user?.role === UserRole.BAC_SI && user?.staffId) {
-      qb.andWhere('rec.doctorId = :doctorId', { doctorId: user.staffId });
-    } else if (query?.MaBacSi) {
+    if (user?.role === UserRole.ADMIN && query?.MaBacSi) {
       qb.andWhere('rec.doctorId = :doctorId', { doctorId: query.MaBacSi });
+    }
+    if (query?.MaLich) {
+      qb.andWhere('rec.appointmentId = :appointmentId', {
+        appointmentId: query.MaLich,
+      });
+    }
+
+    const search = String(query?.search || '').trim();
+    if (search) {
+      qb.andWhere(
+        `(
+          CAST(rec.id AS TEXT) ILIKE :search
+          OR CAST(rec.patientId AS TEXT) ILIKE :search
+          OR patient.fullName ILIKE :search
+          OR patient.phone ILIKE :search
+          OR rec.symptoms ILIKE :search
+          OR rec.diagnosis ILIKE :search
+          OR rec.conclusion ILIKE :search
+        )`,
+        { search: `%${search}%` },
+      );
     }
 
     qb.orderBy('rec.examinationDate', 'DESC')
@@ -159,20 +177,35 @@ export class MedicalRecordServiceService {
     return this.formatHistoryRecord(record);
   }
 
-  async getById(id: number) {
-    const rec = await this.recordRepo.findOne({
-      where: { id },
-      relations: ['patient', 'doctor', 'appointment', 'prescription', 'prescription.items', 'prescription.items.drug', 'invoice'],
-    });
+  async getById(id: number, user?: any) {
+    const qb = this.recordRepo
+      .createQueryBuilder('rec')
+      .leftJoinAndSelect('rec.patient', 'patient')
+      .leftJoinAndSelect('rec.doctor', 'doctor')
+      .leftJoinAndSelect('rec.appointment', 'appointment')
+      .leftJoinAndSelect('rec.prescription', 'prescription')
+      .leftJoinAndSelect('prescription.items', 'items')
+      .leftJoinAndSelect('items.drug', 'drug')
+      .leftJoinAndSelect('rec.invoice', 'invoice')
+      .where('rec.id = :id', { id });
+    if (user) this.applyRecordScope(qb, user);
+    const rec = await qb.getOne();
     if (!rec) throw new NotFoundException('Không tìm thấy phiếu khám');
     return this.formatRecord(rec);
   }
 
-  async getByAppointment(appointmentId: number) {
-    const rec = await this.recordRepo.findOne({
-      where: { appointmentId },
-      relations: ['patient', 'doctor', 'prescription', 'prescription.items', 'prescription.items.drug', 'invoice'],
-    });
+  async getByAppointment(appointmentId: number, user: any) {
+    const qb = this.recordRepo
+      .createQueryBuilder('rec')
+      .leftJoinAndSelect('rec.patient', 'patient')
+      .leftJoinAndSelect('rec.doctor', 'doctor')
+      .leftJoinAndSelect('rec.prescription', 'prescription')
+      .leftJoinAndSelect('prescription.items', 'items')
+      .leftJoinAndSelect('items.drug', 'drug')
+      .leftJoinAndSelect('rec.invoice', 'invoice')
+      .where('rec.appointmentId = :appointmentId', { appointmentId });
+    this.applyRecordScope(qb, user);
+    const rec = await qb.getOne();
     return rec ? this.formatRecord(rec) : null;
   }
 
@@ -366,8 +399,38 @@ export class MedicalRecordServiceService {
     }
   }
 
-  async getByDoctor(doctorId: number, query: any) {
-    return await this.getAll({ ...query, MaBacSi: doctorId }, null);
+  async getByDoctor(doctorId: number, query: any, user: any) {
+    if (
+      user?.role === UserRole.BAC_SI &&
+      Number(user.staffId) !== Number(doctorId)
+    ) {
+      throw new ForbiddenException('Bác sĩ không được xem bệnh nhân của bác sĩ khác');
+    }
+    return await this.getAll({ ...query, MaBacSi: doctorId }, user);
+  }
+
+  private applyRecordScope(qb: any, user: any) {
+    if (user?.role === UserRole.ADMIN) return;
+
+    if (user?.role === UserRole.BAC_SI) {
+      const doctorId = Number(user.staffId ?? user.MaNV);
+      if (!Number.isInteger(doctorId) || doctorId <= 0) {
+        throw new ForbiddenException('Tài khoản chưa được liên kết với bác sĩ');
+      }
+      qb.andWhere('rec.doctorId = :scopeDoctorId', { scopeDoctorId: doctorId });
+      return;
+    }
+
+    if (user?.role === UserRole.NGUOI_DUNG) {
+      const patientId = Number(user.patientId ?? user.MaBN);
+      if (!Number.isInteger(patientId) || patientId <= 0) {
+        throw new ForbiddenException('Tài khoản chưa được liên kết với bệnh nhân');
+      }
+      qb.andWhere('rec.patientId = :scopePatientId', { scopePatientId: patientId });
+      return;
+    }
+
+    throw new ForbiddenException('Bạn không có quyền xem hồ sơ bệnh án');
   }
 
   private createHistoryQuery() {

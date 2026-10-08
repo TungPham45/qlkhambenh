@@ -1,7 +1,5 @@
 import {
-  Ban,
   BookOpen,
-  CheckCircle2,
   Edit3,
   Eye,
   Plus,
@@ -18,10 +16,9 @@ import {
   getDisease,
   listDiseases,
   updateDisease,
-  updateDiseaseStatus,
 } from "./services/diseaseApi.js";
 
-const INITIAL_QUERY = { page: 1, limit: 10, search: "", group: "", status: "" };
+const INITIAL_QUERY = { page: 1, limit: 10, search: "", group: "" };
 
 export function DiseasesPage() {
   const { notify } = useToast();
@@ -36,7 +33,6 @@ export function DiseasesPage() {
   const [formModal, setFormModal] = useState({ open: false, row: null });
   const [detailModal, setDetailModal] = useState({ open: false, row: null, loading: false });
   const [saving, setSaving] = useState(false);
-  const [changingStatusId, setChangingStatusId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -115,23 +111,6 @@ export function DiseasesPage() {
     }
   }
 
-  async function toggleStatus(row) {
-    const nextStatus = row.status === "Active" ? "Inactive" : "Active";
-    const action = nextStatus === "Active" ? "kích hoạt lại" : "ngừng sử dụng";
-    if (!window.confirm(`Bạn có chắc muốn ${action} bệnh “${row.name}”?`)) return;
-
-    setChangingStatusId(row.id);
-    try {
-      await updateDiseaseStatus(row.id, nextStatus);
-      notify(nextStatus === "Active" ? "Đã kích hoạt lại bệnh" : "Đã ngừng sử dụng bệnh");
-      setRefreshKey((value) => value + 1);
-    } catch (error) {
-      notify(error?.message || "Không thể cập nhật trạng thái bệnh", "error");
-    } finally {
-      setChangingStatusId(null);
-    }
-  }
-
   const total = pagination?.total ?? rows.length;
   const totalPages = pagination?.total_pages ?? 1;
 
@@ -171,16 +150,6 @@ export function DiseasesPage() {
             <option value="">Tất cả nhóm bệnh</option>
             {groups.map((group) => <option value={group} key={group}>{group}</option>)}
           </select>
-          <select
-            aria-label="Lọc theo trạng thái"
-            className="admin-filter-select"
-            value={query.status}
-            onChange={(event) => changeFilter("status", event.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="Active">Hoạt động</option>
-            <option value="Inactive">Ngừng hoạt động</option>
-          </select>
           <button className="admin-excel-button" type="submit">
             <Search size={17} /> Tìm kiếm
           </button>
@@ -197,49 +166,31 @@ export function DiseasesPage() {
                 <th>Tên bệnh</th>
                 <th>Nhóm bệnh</th>
                 <th>Mô tả</th>
-                <th>Trạng thái</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="admin-empty" colSpan="6">Đang tải danh mục bệnh...</td></tr>
-              ) : rows.length ? rows.map((row) => {
-                const active = row.status === "Active";
-                return (
-                  <tr key={row.id}>
-                    <td><span className="admin-code">{row.code}</span></td>
-                    <td><span className="admin-name-cell"><strong>{row.name}</strong></span></td>
-                    <td>{row.group || "-"}</td>
-                    <td className="max-w-xs"><span className="line-clamp-2" title={row.description || ""}>{row.description || "-"}</span></td>
-                    <td>
-                      <span className={active ? "admin-status" : "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600"}>
-                        {active ? "Hoạt động" : "Ngừng hoạt động"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="admin-row-actions">
-                        <button className="admin-action" type="button" title="Xem chi tiết" onClick={() => openDetails(row)}>
-                          <Eye size={16} />
-                        </button>
-                        <button className="admin-action" type="button" title="Sửa" onClick={() => openEdit(row)}>
-                          <Edit3 size={16} />
-                        </button>
-                        <button
-                          className={`admin-action ${active ? "admin-action-danger" : ""}`}
-                          type="button"
-                          title={active ? "Ngừng sử dụng" : "Kích hoạt lại"}
-                          disabled={changingStatusId === row.id}
-                          onClick={() => toggleStatus(row)}
-                        >
-                          {active ? <Ban size={16} /> : <CheckCircle2 size={16} />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <tr><td className="admin-empty" colSpan="6">Không có bệnh phù hợp</td></tr>
+                <tr><td className="admin-empty" colSpan="5">Đang tải danh mục bệnh...</td></tr>
+              ) : rows.length ? rows.map((row) => (
+                <tr key={row.id}>
+                  <td><span className="admin-code">{row.code}</span></td>
+                  <td><span className="admin-name-cell"><strong>{row.name}</strong></span></td>
+                  <td>{row.group || "-"}</td>
+                  <td className="max-w-xs"><span className="line-clamp-2" title={row.description || ""}>{row.description || "-"}</span></td>
+                  <td>
+                    <div className="admin-row-actions">
+                      <button className="admin-action" type="button" title="Xem chi tiết" onClick={() => openDetails(row)}>
+                        <Eye size={16} />
+                      </button>
+                      <button className="admin-action" type="button" title="Sửa" onClick={() => openEdit(row)}>
+                        <Edit3 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td className="admin-empty" colSpan="5">Không có bệnh phù hợp</td></tr>
               )}
             </tbody>
           </table>

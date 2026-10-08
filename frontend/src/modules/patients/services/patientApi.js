@@ -7,18 +7,9 @@ export async function listPatients(params = {}) {
   return unwrapRows(response);
 }
 
-export async function listPatientsByDoctorIds(patientIds, params = {}) {
-  if (!patientIds || patientIds.length === 0) {
-    return { rows: [], pagination: { total: 0, page: 1, limit: 20, total_pages: 0 } };
-  }
-  
-  const response = await httpClient.get(endpoints.patients, {
-    params: {
-      ...params,
-      ids: patientIds.join(",")
-    }
-  });
-  return unwrapRows(response);
+export async function getPatient(id) {
+  const response = await httpClient.get(`${endpoints.patients}/${encodeURIComponent(id)}`);
+  return unwrapData(response);
 }
 
 export async function createPatient(payload) {
