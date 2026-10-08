@@ -1,0 +1,1 @@
+export function AdminPlaceholderPage({ title }) { return <div className="admin-page"><div className="admin-page-head"><div><h1>{title}</h1><p>Chức năng đã được tách URL riêng và sẽ được kết nối nghiệp vụ ở bước tiếp theo.</p></div></div><section className="admin-panel"><div className="admin-empty">Chưa có dữ liệu cho chức năng này.</div></section></div>; }

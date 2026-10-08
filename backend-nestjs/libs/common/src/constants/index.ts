@@ -1,7 +1,6 @@
 export enum UserRole {
   ADMIN = 'Admin',
   BAC_SI = 'BacSi',
-  LE_TAN = 'LeTan',
   NGUOI_DUNG = 'NguoiDung',
 }
 
@@ -59,6 +58,7 @@ export const MSG = {
   // Auth
   AUTH_LOGIN: { cmd: 'auth.login' },
   AUTH_REGISTER: { cmd: 'auth.register' },
+  AUTH_UPDATE_PROFILE: { cmd: 'auth.update_profile' },
   AUTH_ME: { cmd: 'auth.me' },
   AUTH_GET_ACCOUNTS: { cmd: 'auth.get_accounts' },
   AUTH_GET_ACCOUNT_BY_USER: { cmd: 'auth.get_account_by_user' },
@@ -73,6 +73,11 @@ export const MSG = {
   STAFF_UPDATE: { cmd: 'staff.update' },
   STAFF_DELETE: { cmd: 'staff.delete' },
   STAFF_GET_DOCTORS: { cmd: 'staff.get_doctors' },
+  SPECIALTY_GET_ALL: { cmd: 'specialty.get_all' },
+  SPECIALTY_GET_BY_ID: { cmd: 'specialty.get_by_id' },
+  SPECIALTY_CREATE: { cmd: 'specialty.create' },
+  SPECIALTY_UPDATE: { cmd: 'specialty.update' },
+  SPECIALTY_DELETE: { cmd: 'specialty.delete' },
 
   // Patients
   PATIENT_GET_ALL: { cmd: 'patient.get_all' },

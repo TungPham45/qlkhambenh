@@ -5,26 +5,26 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
-  JoinColumn,
 } from 'typeorm';
 import { UserRole, AccountStatus } from '@app/common';
 import { Staff } from './staff.entity';
 import { Patient } from './patient.entity';
 
-@Entity('accounts')
+@Entity('tai_khoan')
 export class Account {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'id_tai_khoan' })
   id: string;
 
-  @Column({ unique: true, length: 50 })
+  @Column({ name: 'ten_dang_nhap', unique: true, length: 100 })
   username: string;
 
-  @Column({ name: 'password_hash' })
+  @Column({ name: 'mat_khau_ma_hoa' })
   passwordHash: string;
 
   @Column({
     type: 'varchar',
     length: 30,
+    name: 'vai_tro',
     default: UserRole.NGUOI_DUNG,
   })
   role: UserRole;
@@ -32,27 +32,20 @@ export class Account {
   @Column({
     type: 'varchar',
     length: 20,
+    name: 'trang_thai',
     default: AccountStatus.ACTIVE,
   })
   status: AccountStatus;
 
-  @Column({ name: 'staff_id', nullable: true, type: 'bigint' })
-  staffId: number;
-
-  @Column({ name: 'patient_id', nullable: true, type: 'bigint' })
-  patientId: number;
-
   @OneToOne(() => Staff, (staff) => staff.account, { nullable: true })
-  @JoinColumn({ name: 'staff_id' })
   staff?: Staff;
 
   @OneToOne(() => Patient, (patient) => patient.account, { nullable: true })
-  @JoinColumn({ name: 'patient_id' })
   patient?: Patient;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

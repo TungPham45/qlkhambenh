@@ -15,51 +15,52 @@ import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { PrescriptionItem } from './prescription-item.entity';
 
-@Entity('prescriptions')
+@Entity('don_thuoc')
 export class Prescription {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { type: 'bigint', name: 'id_don_thuoc' })
   id: number;
 
-  @Column({ name: 'medical_record_id', type: 'bigint', unique: true })
+  @Column({ name: 'id_phieu_kham', type: 'bigint', unique: true })
   medicalRecordId: number;
 
-  @Column({ name: 'patient_id', type: 'bigint' })
+  @Column({ name: 'id_benh_nhan', type: 'bigint' })
   patientId: number;
 
-  @Column({ name: 'doctor_id', type: 'bigint' })
+  @Column({ name: 'id_bac_si', type: 'bigint' })
   doctorId: number;
 
-  @Column({ name: 'prescription_date', type: 'date', default: () => 'CURRENT_DATE' })
+  @Column({ name: 'ngay_ke_don', type: 'date', default: () => 'CURRENT_DATE' })
   prescriptionDate: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'ghi_chu', type: 'text', nullable: true })
   note: string;
 
   @Column({
     type: 'varchar',
     length: 30,
+    name: 'trang_thai',
     default: PrescriptionStatus.CREATED,
   })
   status: PrescriptionStatus;
 
   @OneToOne(() => MedicalRecord, (rec) => rec.prescription, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'medical_record_id' })
+  @JoinColumn({ name: 'id_phieu_kham' })
   medicalRecord?: MedicalRecord;
 
   @ManyToOne(() => Patient)
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'id_benh_nhan' })
   patient?: Patient;
 
   @ManyToOne(() => Staff)
-  @JoinColumn({ name: 'doctor_id' })
+  @JoinColumn({ name: 'id_bac_si' })
   doctor?: Staff;
 
   @OneToMany(() => PrescriptionItem, (item) => item.prescription, { cascade: true })
   items?: PrescriptionItem[];
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

@@ -96,10 +96,10 @@ export function AuthProvider({ children }) {
             endpoints.auth.me
           );
 
-        const authenticatedUser =
-          response.data?.user ||
-          response.data ||
-          null;
+        const verifiedUser = response?.user || response?.data?.user || response?.data || null;
+        const authenticatedUser = verifiedUser
+          ? { ...(getStoredUser() || {}), ...verifiedUser }
+          : null;
 
         if (!authenticatedUser) {
           throw new Error(
@@ -144,12 +144,7 @@ export function AuthProvider({ children }) {
         const response =
           await httpClient.post(
             endpoints.auth.login,
-            {
-              username: username.trim(),
-              password: password,
-              TenDangNhap: username.trim(),
-              MatKhau: password,
-            }
+            { username: username.trim(), password }
           );
 
         const nextToken =
@@ -171,13 +166,11 @@ export function AuthProvider({ children }) {
             endpoints.auth.me
           );
 
-        const nextUser =
-          meResponse?.user ||
-          meResponse?.data?.user ||
-          meResponse?.data ||
-          response?.user ||
-          response?.data?.user ||
-          null;
+        const loginUser = response?.user || response?.data?.user || {};
+        const verifiedUser = meResponse?.user || meResponse?.data?.user || meResponse?.data || {};
+        const nextUser = Object.keys({ ...loginUser, ...verifiedUser }).length
+          ? { ...loginUser, ...verifiedUser }
+          : null;
 
         if (!nextUser) {
           throw new Error(
@@ -207,6 +200,14 @@ export function AuthProvider({ children }) {
     [syncSession]
   );
 
+  const updateUser = useCallback((changes) => {
+    setUser((current) => {
+      const nextUser = { ...current, ...changes };
+      setStoredUser(nextUser);
+      return nextUser;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       token,
@@ -226,6 +227,7 @@ export function AuthProvider({ children }) {
 
       login,
       logout,
+      updateUser,
     }),
     [
       token,
@@ -234,6 +236,7 @@ export function AuthProvider({ children }) {
       loading,
       login,
       logout,
+      updateUser,
     ]
   );
 

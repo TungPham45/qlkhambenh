@@ -14,48 +14,49 @@ import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { MedicalRecord } from './medical-record.entity';
 
-@Entity('appointments')
+@Entity('lich_hen')
 @Index(['doctorId', 'appointmentDate', 'appointmentTime'])
 export class Appointment {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { type: 'bigint', name: 'id_lich_hen' })
   id: number;
 
-  @Column({ name: 'patient_id', type: 'bigint' })
+  @Column({ name: 'id_benh_nhan', type: 'bigint' })
   patientId: number;
 
-  @Column({ name: 'doctor_id', type: 'bigint' })
+  @Column({ name: 'id_bac_si', type: 'bigint' })
   doctorId: number;
 
-  @Column({ name: 'appointment_date', type: 'date' })
+  @Column({ name: 'ngay_hen', type: 'date' })
   appointmentDate: string;
 
-  @Column({ name: 'appointment_time', type: 'time' })
+  @Column({ name: 'gio_hen', type: 'time' })
   appointmentTime: string;
 
   @Column({
     type: 'varchar',
     length: 30,
+    name: 'trang_thai',
     default: AppointmentStatus.CHO_KHAM,
   })
   status: AppointmentStatus;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'ghi_chu', type: 'text', nullable: true })
   notes: string;
 
   @ManyToOne(() => Patient, (patient) => patient.appointments, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'id_benh_nhan' })
   patient?: Patient;
 
   @ManyToOne(() => Staff, (staff) => staff.appointments, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'doctor_id' })
+  @JoinColumn({ name: 'id_bac_si' })
   doctor?: Staff;
 
   @OneToOne(() => MedicalRecord, (rec) => rec.appointment)
   medicalRecord?: MedicalRecord;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

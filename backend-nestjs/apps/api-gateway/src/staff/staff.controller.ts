@@ -9,6 +9,8 @@ import {
   Query,
   Inject,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -18,6 +20,8 @@ import {
   MSG,
   CreateStaffDto,
   UpdateStaffDto,
+  CreateSpecialtyDto,
+  UpdateSpecialtyDto,
 } from '@app/common';
 
 @ApiTags('Staff & Doctors')
@@ -50,13 +54,21 @@ export class StaffController {
   @Post('admin/staff')
   @ApiOperation({ summary: 'Tạo hồ sơ nhân viên mới' })
   async createAdminStaff(@Body() dto: CreateStaffDto) {
-    return await firstValueFrom(this.staffClient.send(MSG.STAFF_CREATE, dto));
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.STAFF_CREATE, dto));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
 
   @Post('staff')
   @ApiOperation({ summary: 'Tạo hồ sơ nhân viên mới' })
   async createStaff(@Body() dto: CreateStaffDto) {
-    return await firstValueFrom(this.staffClient.send(MSG.STAFF_CREATE, dto));
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.STAFF_CREATE, dto));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
 
   @Put('staff/:id')
@@ -65,14 +77,67 @@ export class StaffController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateStaffDto,
   ) {
-    return await firstValueFrom(
-      this.staffClient.send(MSG.STAFF_UPDATE, { id, dto }),
-    );
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.STAFF_UPDATE, { id, dto }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
 
   @Delete('staff/:id')
   @ApiOperation({ summary: 'Xóa nhân viên' })
   async deleteStaff(@Param('id', ParseIntPipe) id: number) {
-    return await firstValueFrom(this.staffClient.send(MSG.STAFF_DELETE, { id }));
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.STAFF_DELETE, { id }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
+
+  @Get('specialties')
+  @ApiOperation({ summary: 'Lấy danh sách chuyên khoa' })
+  async getSpecialties(@Query() query: any) {
+    return await firstValueFrom(this.staffClient.send(MSG.SPECIALTY_GET_ALL, query));
+  }
+
+  @Get('specialties/:id')
+  async getSpecialty(@Param('id', ParseIntPipe) id: number) {
+    return await firstValueFrom(this.staffClient.send(MSG.SPECIALTY_GET_BY_ID, { id }));
+  }
+
+  @Post('specialties')
+  async createSpecialty(@Body() dto: CreateSpecialtyDto) {
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.SPECIALTY_CREATE, dto));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+
+  @Put('specialties/:id')
+  async updateSpecialty(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpecialtyDto) {
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.SPECIALTY_UPDATE, { id, dto }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+
+  @Delete('specialties/:id')
+  async deleteSpecialty(@Param('id', ParseIntPipe) id: number) {
+    try {
+      return await firstValueFrom(this.staffClient.send(MSG.SPECIALTY_DELETE, { id }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+}
+
+function toHttpException(error: any) {
+  const message = error?.message || error?.error?.message || 'Không thể thực hiện thao tác quản lý';
+  const candidateStatus = error?.statusCode || error?.status || error?.error?.statusCode;
+  const status = Number.isInteger(candidateStatus) && candidateStatus >= 400 && candidateStatus <= 599
+    ? candidateStatus
+    : HttpStatus.BAD_REQUEST;
+  return new HttpException(message, status);
 }

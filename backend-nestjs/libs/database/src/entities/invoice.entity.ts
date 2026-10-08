@@ -12,22 +12,22 @@ import { PaymentMethod, BillingStatus } from '@app/common';
 import { MedicalRecord } from './medical-record.entity';
 import { Patient } from './patient.entity';
 
-@Entity('invoices')
+@Entity('hoa_don')
 export class Invoice {
-  @PrimaryColumn({ length: 50 })
+  @PrimaryColumn({ name: 'id_hoa_don', length: 30 })
   id: string; // VD: 'HD0001'
 
-  @Column({ name: 'medical_record_id', type: 'bigint', unique: true })
+  @Column({ name: 'id_phieu_kham', type: 'bigint', unique: true })
   medicalRecordId: number;
 
-  @Column({ name: 'patient_id', type: 'bigint' })
+  @Column({ name: 'id_benh_nhan', type: 'bigint' })
   patientId: number;
 
-  @Column({ name: 'created_date', type: 'date', default: () => 'CURRENT_DATE' })
+  @Column({ name: 'ngay_lap', type: 'date', default: () => 'CURRENT_DATE' })
   createdDate: string;
 
   @Column({
-    name: 'examination_fee',
+    name: 'phi_kham',
     type: 'numeric',
     precision: 12,
     scale: 2,
@@ -36,7 +36,7 @@ export class Invoice {
   examinationFee: number;
 
   @Column({
-    name: 'drug_fee',
+    name: 'tien_thuoc',
     type: 'numeric',
     precision: 12,
     scale: 2,
@@ -45,43 +45,36 @@ export class Invoice {
   drugFee: number;
 
   @Column({
-    name: 'total_amount',
+    name: 'tong_tien',
     type: 'numeric',
     precision: 12,
     scale: 2,
   })
   totalAmount: number;
 
-  @Column({
-    name: 'payment_method',
-    type: 'varchar',
-    length: 50,
-    default: PaymentMethod.TIEN_MAT,
-  })
   paymentMethod: PaymentMethod;
 
   @Column({
-    name: 'payment_status',
+    name: 'trang_thai_thanh_toan',
     type: 'varchar',
     length: 50,
     default: BillingStatus.CHUA_THANH_TOAN,
   })
   paymentStatus: BillingStatus;
 
-  @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date;
 
   @OneToOne(() => MedicalRecord, (rec) => rec.invoice, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'medical_record_id' })
+  @JoinColumn({ name: 'id_phieu_kham' })
   medicalRecord?: MedicalRecord;
 
   @ManyToOne(() => Patient)
-  @JoinColumn({ name: 'patient_id' })
+  @JoinColumn({ name: 'id_benh_nhan' })
   patient?: Patient;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

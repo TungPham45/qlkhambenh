@@ -1,0 +1,122 @@
+:root {
+  --public-blue: #1f5dbb;
+  --public-blue-dark: #154995;
+  --public-ink: #172033;
+  --public-muted: #647084;
+  --public-line: #dfe6ee;
+  --public-bg: #f4f8f8;
+}
+
+.public-page { min-height: 100vh; background: var(--public-bg); color: var(--public-ink); }
+.public-header { position: relative; z-index: 30; border-bottom: 1px solid #e4e9ef; background: rgba(255,255,255,.97); box-shadow: 0 3px 14px rgba(22,40,67,.06); }
+.public-header-inner { width: min(1180px, calc(100% - 40px)); min-height: 82px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.public-brand { display: flex; align-items: center; gap: 13px; min-width: 0; color: var(--public-blue); text-decoration: none; }
+.public-brand-mark { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid #bdd3ef; border-radius: 13px; background: #edf5ff; }
+.public-brand strong, .public-brand small { display: block; }
+.public-brand strong { font-size: 17px; letter-spacing: .015em; }
+.public-brand small { margin-top: 2px; color: #6e7888; font-size: 12px; }
+.public-header-actions, .public-auth-actions { display: flex; align-items: center; gap: 12px; }
+.public-hotline { display: flex; align-items: center; gap: 9px; padding: 10px 14px; border: 1px solid #f2d9d9; border-radius: 10px; background: #fff7f7; color: #343b48; text-decoration: none; white-space: nowrap; }
+.public-hotline svg, .public-hotline strong { color: #e32b2b; }
+.public-button { min-height: 40px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid transparent; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; transition: .18s ease; }
+.public-button:hover { transform: translateY(-1px); }
+.public-button:disabled { opacity: .65; cursor: wait; transform: none; }
+.public-button-primary { border-color: var(--public-blue); background: var(--public-blue); color: #fff; box-shadow: 0 7px 16px rgba(31,93,187,.18); }
+.public-button-primary:hover { background: var(--public-blue-dark); }
+.public-button-secondary { border-color: #ced8e5; background: #fff; color: #24415f; }
+.public-button-large { min-height: 46px; padding: 0 22px; }
+.public-button-block { width: 100%; min-height: 47px; }
+
+.public-user { position: relative; }
+.public-user-trigger { display: flex; align-items: center; gap: 9px; padding: 5px 7px; border: 0; border-radius: 10px; background: transparent; color: #273242; cursor: pointer; }
+.public-user-trigger:hover { background: #f2f6fa; }
+.public-avatar { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 50%; background: #e9f2ff; color: var(--public-blue); font-weight: 800; }
+.public-user-name strong, .public-user-name small { display: block; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.public-user-name strong { font-size: 14px; }
+.public-user-name small { color: #778194; font-size: 11px; }
+.public-user-menu { position: absolute; top: calc(100% + 10px); right: 0; width: 210px; padding: 7px; border: 1px solid var(--public-line); border-radius: 11px; background: #fff; box-shadow: 0 16px 38px rgba(23,44,74,.16); }
+.public-user-menu button { width: 100%; padding: 10px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 7px; background: transparent; color: #303b4c; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.public-user-menu button:hover { background: #eff5fc; color: var(--public-blue); }
+
+.home-main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 68px 0 70px; }
+.home-hero { display: grid; grid-template-columns: 1.18fr .82fr; align-items: center; gap: 48px; }
+.home-eyebrow { width: max-content; max-width: 100%; display: flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1px solid #bcd3ee; border-radius: 999px; background: #edf6ff; color: var(--public-blue); font-size: 13px; font-weight: 700; }
+.home-copy h1 { max-width: 720px; margin: 16px 0 14px; color: #173b73; font-size: clamp(37px, 4.2vw, 57px); line-height: 1.09; letter-spacing: -.035em; }
+.home-copy h1 span { color: var(--public-blue); }
+.home-lead { max-width: 700px; margin: 0; color: #5c6879; font-size: 17px; line-height: 1.75; }
+.home-services { margin-top: 30px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.home-service-card { min-height: 108px; padding: 18px; display: flex; align-items: flex-start; gap: 15px; border: 1px solid #e1e7ed; border-radius: 14px; background: #fff; color: var(--public-ink); text-decoration: none; box-shadow: 0 8px 20px rgba(31,52,75,.07); transition: .18s ease; }
+.home-service-card:first-child { grid-column: span 2; }
+.home-service-card:hover { transform: translateY(-3px); border-color: #b8ceed; box-shadow: 0 13px 28px rgba(30,70,117,.12); }
+.home-service-card strong, .home-service-card small { display: block; }
+.home-service-card strong { margin-top: 2px; font-size: 16px; }
+.home-service-card small { margin-top: 7px; color: #697586; font-size: 13px; line-height: 1.55; }
+.home-service-icon { flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; }
+.home-service-icon-blue { background: #eaf3ff; color: #1e63ca; }
+.home-service-icon-green { background: #eaf9f2; color: #14966a; }
+.home-service-icon-amber { background: #fff6df; color: #d78a07; }
+.home-cta-row { margin-top: 24px; display: flex; gap: 12px; }
+.home-visual { position: relative; min-height: 495px; border: 4px solid #fff; border-radius: 26px; overflow: hidden; background: #dce6eb; box-shadow: 0 22px 45px rgba(25,59,88,.2); }
+.home-visual::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 58%, rgba(7,31,58,.32)); pointer-events: none; }
+.home-visual img { width: 100%; height: 100%; min-height: 495px; display: block; object-fit: cover; object-position: center; filter: none; }
+.home-visual-note { position: absolute; z-index: 2; right: 20px; bottom: 20px; left: 20px; padding: 15px 17px; display: flex; align-items: center; gap: 11px; border-radius: 14px; background: rgba(255,255,255,.95); box-shadow: 0 10px 25px rgba(8,30,55,.17); color: var(--public-blue); }
+.home-visual-note strong, .home-visual-note small { display: block; }
+.home-visual-note small { margin-top: 2px; color: #5c6877; font-size: 12px; }
+
+.auth-public-page { background: radial-gradient(circle at 15% 20%, #e4f1ff 0, transparent 31%), var(--public-bg); }
+.public-auth-main { width: min(520px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
+.public-auth-main-wide { width: min(820px, calc(100% - 32px)); }
+.public-auth-card { padding: 30px; border: 1px solid #dde5ed; border-radius: 18px; background: #fff; box-shadow: 0 18px 45px rgba(26,50,76,.11); }
+.public-auth-heading { margin-bottom: 23px; text-align: center; }
+.public-auth-heading small { color: var(--public-blue); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.public-auth-heading h1 { margin: 7px 0 7px; font-size: 28px; }
+.public-auth-heading p { margin: 0; color: var(--public-muted); font-size: 14px; }
+.public-form { display: grid; gap: 17px; }
+.public-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.public-field { display: grid; gap: 7px; color: #344053; font-size: 13px; font-weight: 700; }
+.public-field-wide { grid-column: span 2; }
+.public-field input, .public-field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #ccd7e3; border-radius: 9px; outline: none; background: #fff; color: #1d2838; font: inherit; font-weight: 500; }
+.public-field input:focus, .public-field select:focus { border-color: #4c88d4; box-shadow: 0 0 0 3px rgba(48,112,197,.12); }
+.public-input-icon { position: relative; }
+.public-input-icon > svg { position: absolute; top: 13px; left: 12px; color: #7a8797; }
+.public-input-icon input { padding-left: 40px; padding-right: 42px; }
+.public-input-icon button { position: absolute; top: 7px; right: 7px; width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #718094; cursor: pointer; }
+.public-auth-switch { margin: 20px 0 0; color: #657185; font-size: 14px; text-align: center; }
+.public-auth-switch a { color: var(--public-blue); font-weight: 800; text-decoration: none; }
+.public-alert { padding: 11px 13px; border-radius: 8px; font-size: 13px; }
+.public-alert-success { margin-bottom: 15px; background: #eaf8f0; color: #167047; }
+.public-alert-error { margin-bottom: 15px; background: #fff0f0; color: #b32b2b; }
+
+.public-modal-backdrop { position: fixed; z-index: 100; inset: 0; padding: 20px; display: grid; place-items: center; background: rgba(11,25,43,.55); }
+.public-modal { width: min(720px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 25px; border-radius: 17px; background: #fff; box-shadow: 0 24px 65px rgba(8,21,39,.32); }
+.public-modal-head { margin-bottom: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.public-modal-head small { color: var(--public-blue); font-weight: 800; }
+.public-modal-head h2 { margin: 4px 0 0; font-size: 24px; }
+.public-modal-head > button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: #f1f4f7; color: #596578; cursor: pointer; }
+.public-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 900px) {
+  .public-hotline { display: none; }
+  .home-main { padding-top: 40px; }
+  .home-hero { grid-template-columns: 1fr; }
+  .home-visual { min-height: 400px; }
+  .home-visual img { min-height: 400px; }
+}
+
+@media (max-width: 640px) {
+  .public-header-inner { width: min(100% - 24px, 1180px); min-height: 70px; }
+  .public-brand-mark { width: 40px; height: 40px; }
+  .public-brand strong { max-width: 185px; font-size: 13px; }
+  .public-brand small, .public-user-name, .public-auth-actions .public-button-secondary { display: none; }
+  .public-auth-actions .public-button { padding: 0 11px; }
+  .home-main { width: min(100% - 28px, 1180px); padding-top: 32px; }
+  .home-copy h1 { font-size: 36px; }
+  .home-services, .public-form-grid { grid-template-columns: 1fr; }
+  .home-service-card:first-child, .public-field-wide { grid-column: auto; }
+  .home-service-card { min-height: 100px; }
+  .home-visual { min-height: 330px; border-radius: 19px; }
+  .home-visual img { min-height: 330px; }
+  .home-cta-row { flex-direction: column; }
+  .public-auth-card { padding: 23px 18px; }
+  .public-modal { padding: 20px 16px; }
+}

@@ -27,7 +27,6 @@ export const paymentOptions = [
 export const roleOptions = [
   { value: "Admin", label: "Admin" },
   { value: "BacSi", label: "Bác sĩ" },
-  { value: "LeTan", label: "Lễ tân" },
   { value: "NguoiDung", label: "Người dùng" }
 ];
 
@@ -40,8 +39,7 @@ export const specialtyOptions = [
   { value: "Khoa nhi", label: "Khoa nhi" },
   { value: "Tai mui hong", label: "Tai mũi họng" },
   { value: "Khoa xet nghiem", label: "Khoa xét nghiệm" },
-  { value: "Khoa mat", label: "Khoa mắt" },
-  { value: "Le Tan", label: "Lễ tân" }
+  { value: "Khoa mat", label: "Khoa mắt" }
 ];
 
 export const lookupConfigs = {
@@ -228,8 +226,7 @@ export const resourceConfigs = {
     ]
   },
   staff: {
-    title: "Nhân viên",
-    endpoint: "/admin/staff",
+    title: "Bác sĩ", pageTitle: "Quản Lý Danh Sách Bác Sĩ", description: "Quản lý hồ sơ bác sĩ, thông tin liên hệ và tài khoản đăng nhập.", itemLabel: "Bác sĩ", summaryLabel: "Tổng số bác sĩ", searchPlaceholder: "Tìm kiếm bác sĩ theo mã, họ tên, số điện thoại", exportName: "danh-sach-bac-si", endpoint: "/staff", limit: 4,
     pk: "MaNV",
     columns: [
       { key: "MaNV", header: "Mã NV" },
@@ -237,16 +234,23 @@ export const resourceConfigs = {
       { key: "NgaySinh", header: "Ngày sinh", render: (row) => formatDate(row.NgaySinh) },
       { key: "GioiTinh", header: "Giới tính" },
       { key: "SoDienThoai", header: "SĐT" },
-      { key: "ChuyenKhoa", header: "Chuyên khoa" },
+      { key: "ChuyenKhoa", header: "Bằng cấp" },
       { key: "TenDangNhap", header: "Tên đăng nhập" }
     ],
     fields: [
-      { name: "HoTen", label: "Họ tên", type: "text", required: true },
-      { name: "NgaySinh", label: "Ngày sinh", type: "date", required: true },
-      { name: "GioiTinh", label: "Giới tính", type: "select", options: genderOptions, required: true },
-      { name: "SoDienThoai", label: "Số điện thoại", type: "text", required: true },
-      { name: "ChuyenKhoa", label: "Chuyên khoa", type: "select", options: specialtyOptions, required: true },
-      { name: "TenDangNhap", label: "Tên đăng nhập", type: "text" }
+      { name: "fullName", label: "Họ tên", type: "text", required: true }, { name: "dateOfBirth", label: "Ngày sinh", type: "date" }, { name: "gender", label: "Giới tính", type: "select", options: genderOptions }, { name: "phone", label: "Số điện thoại", type: "text" }, { name: "specialty", label: "Bằng cấp", type: "text" }, { name: "username", label: "Tên đăng nhập", type: "text", required: true }, { name: "password", label: "Mật khẩu", type: "password", required: true }
+    ],
+    editFields: [
+      { name: "fullName", label: "Họ tên", type: "text", required: true }, { name: "dateOfBirth", label: "Ngày sinh", type: "date" }, { name: "gender", label: "Giới tính", type: "select", options: genderOptions }, { name: "phone", label: "Số điện thoại", type: "text" }, { name: "specialty", label: "Bằng cấp", type: "text" }, { name: "username", label: "Tên đăng nhập", type: "text", required: true }
+    ]
+  },
+  specialties: {
+    title: "Chuyên khoa", pageTitle: "Quản Lý Danh Sách Chuyên Khoa", description: "Quản lý thông tin chuyên khoa và phân bổ bác sĩ trong bệnh viện.", itemLabel: "Chuyên khoa", summaryLabel: "Tổng số chuyên khoa", searchPlaceholder: "Tìm kiếm chuyên khoa theo mã hoặc tên", exportName: "danh-sach-chuyen-khoa", endpoint: "/specialties", pk: "MaChuyenKhoa",
+    columns: [
+      { key: "MaChuyenKhoa", header: "Mã CK", render: (row) => `CK-${String(row.MaChuyenKhoa).padStart(3, "0")}` }, { key: "TenChuyenKhoa", header: "Tên chuyên khoa" }, { key: "MoTa", header: "Mô tả" }, { key: "SoLuongBacSi", header: "Số lượng BS" }, { key: "TrangThai", header: "Trạng thái" }
+    ],
+    fields: [
+      { name: "name", label: "Tên chuyên khoa", type: "text", required: true }, { name: "description", label: "Mô tả", type: "textarea" }, { name: "status", label: "Trạng thái", type: "select", options: accountStatusOptions, default: "Active" }
     ]
   }
 };

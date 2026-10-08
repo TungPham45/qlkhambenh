@@ -11,7 +11,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -29,9 +29,9 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/qlphongkham.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clinic_admin -d clinic_master"]
+      test: [ "CMD-SHELL", "pg_isready -U clinic_admin -d clinic_master" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -42,7 +42,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_api_gateway
-    command: ["npm", "run", "start:prod:api-gateway"]
+    command: [ "npm", "run", "start:prod:api-gateway" ]
     ports:
       - "3001:3000"
     environment:
@@ -67,7 +67,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_auth_service
-    command: ["npm", "run", "start:prod:auth-service"]
+    command: [ "npm", "run", "start:prod:auth-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -89,7 +89,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_patient_service
-    command: ["npm", "run", "start:prod:patient-service"]
+    command: [ "npm", "run", "start:prod:patient-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -110,7 +110,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_staff_service
-    command: ["npm", "run", "start:prod:staff-service"]
+    command: [ "npm", "run", "start:prod:staff-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -131,7 +131,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_appointment_service
-    command: ["npm", "run", "start:prod:appointment-service"]
+    command: [ "npm", "run", "start:prod:appointment-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -152,7 +152,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_medical_record_service
-    command: ["npm", "run", "start:prod:medical-record-service"]
+    command: [ "npm", "run", "start:prod:medical-record-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -173,7 +173,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_pharmacy_service
-    command: ["npm", "run", "start:prod:pharmacy-service"]
+    command: [ "npm", "run", "start:prod:pharmacy-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -194,7 +194,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_billing_service
-    command: ["npm", "run", "start:prod:billing-service"]
+    command: [ "npm", "run", "start:prod:billing-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -215,7 +215,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_analytics_service
-    command: ["npm", "run", "start:prod:analytics-service"]
+    command: [ "npm", "run", "start:prod:analytics-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -236,7 +236,7 @@ services:
       context: ./backend-nestjs
       dockerfile: Dockerfile
     container_name: clinic_statistical_service
-    command: ["npm", "run", "start:prod:statistical-service"]
+    command: [ "npm", "run", "start:prod:statistical-service" ]
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379

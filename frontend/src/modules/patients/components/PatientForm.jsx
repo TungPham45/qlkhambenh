@@ -6,8 +6,10 @@ const emptyPatient = {
   GioiTinh: "Nam",
   SoDienThoai: "",
   DiaChi: "",
-  TienSuBenh: "",
-  TenDangNhap: ""
+  Email: "",
+  SoBaoHiemYTe: "",
+  TenDangNhap: "",
+  MatKhau: ""
 };
 
 export function PatientForm({ initialValue, onSubmit, onCancel, saving }) {
@@ -53,13 +55,23 @@ export function PatientForm({ initialValue, onSubmit, onCancel, saving }) {
           <input className="form-input" value={form.DiaChi || ""} onChange={(event) => updateField("DiaChi", event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700 md:col-span-2">
-          Tiền sử bệnh
-          <textarea className="form-input min-h-24" value={form.TienSuBenh || ""} onChange={(event) => updateField("TienSuBenh", event.target.value)} />
+          Email
+          <input className="form-input" type="email" value={form.Email || ""} onChange={(event) => updateField("Email", event.target.value)} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Tên đăng nhập
           <input className="form-input" required value={form.TenDangNhap || ""} onChange={(event) => updateField("TenDangNhap", event.target.value)} />
         </label>
+        <label className="grid gap-1 text-sm font-medium text-slate-700">
+          Số bảo hiểm y tế
+          <input className="form-input" value={form.SoBaoHiemYTe || ""} onChange={(event) => updateField("SoBaoHiemYTe", event.target.value)} />
+        </label>
+        {!initialValue ? (
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Mật khẩu ban đầu
+            <input className="form-input" type="password" minLength={6} placeholder="Mặc định: 123456" value={form.MatKhau || ""} onChange={(event) => updateField("MatKhau", event.target.value)} />
+          </label>
+        ) : null}
       </div>
       <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
         <button className="btn-secondary" type="button" onClick={onCancel}>

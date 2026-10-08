@@ -33,12 +33,13 @@ export function useCrudResource(config) {
 
   async function save(payload, mode = "create") {
     const id = payload[config.pk];
-    if (mode === "edit" && id) {
+    const isNewResource = mode !== "edit" || !id;
+    if (!isNewResource) {
       await updateResource(config.endpoint, id, payload, config);
     } else {
       await createResource(config.endpoint, payload);
     }
-    await load(query);
+    await load({ ...query, page: isNewResource ? 1 : query.page });
   }
 
   async function remove(id) {

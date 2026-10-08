@@ -1,5 +1,5 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Controller, HttpException, HttpStatus } from '@nestjs/common';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { PatientServiceService } from './patient-service.service';
 import { MSG, CreatePatientDto, UpdatePatientDto } from '@app/common';
 
@@ -19,16 +19,34 @@ export class PatientServiceController {
 
   @MessagePattern(MSG.PATIENT_CREATE)
   async create(@Payload() dto: CreatePatientDto) {
-    return await this.patientService.create(dto);
+    try {
+      return await this.patientService.create(dto);
+    } catch (error) {
+      throw toRpcException(error);
+    }
   }
 
   @MessagePattern(MSG.PATIENT_UPDATE)
   async update(@Payload() data: { id: number; dto: UpdatePatientDto }) {
-    return await this.patientService.update(data.id, data.dto);
+    try {
+      return await this.patientService.update(data.id, data.dto);
+    } catch (error) {
+      throw toRpcException(error);
+    }
   }
 
   @MessagePattern(MSG.PATIENT_DELETE)
   async delete(@Payload() data: { id: number }) {
-    return await this.patientService.delete(data.id);
+    try {
+      return await this.patientService.delete(data.id);
+    } catch (error) {
+      throw toRpcException(error);
+    }
   }
+}
+
+function toRpcException(error: any) {
+  const statusCode = error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST;
+  const message = error?.message || 'Không thể thực hiện thao tác bệnh nhân';
+  return new RpcException({ statusCode, message });
 }

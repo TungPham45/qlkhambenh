@@ -10,26 +10,26 @@ import {
 import { Prescription } from './prescription.entity';
 import { Drug } from './drug.entity';
 
-@Entity('prescription_items')
+@Entity('chi_tiet_don_thuoc')
 @Unique(['prescriptionId', 'drugId'])
 export class PrescriptionItem {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { type: 'bigint', name: 'id_chi_tiet_don_thuoc' })
   id: number;
 
-  @Column({ name: 'prescription_id', type: 'bigint' })
+  @Column({ name: 'id_don_thuoc', type: 'bigint' })
   prescriptionId: number;
 
-  @Column({ name: 'drug_id', type: 'bigint' })
+  @Column({ name: 'id_thuoc', type: 'bigint' })
   drugId: number;
 
-  @Column({ type: 'int' })
+  @Column({ name: 'so_luong', type: 'int' })
   quantity: number;
 
-  @Column({ length: 255 })
+  @Column({ name: 'lieu_dung', length: 255, nullable: true })
   dosage: string;
 
   @Column({
-    name: 'unit_price_at_prescription',
+    name: 'don_gia_tai_thoi_diem_ke',
     type: 'numeric',
     precision: 12,
     scale: 2,
@@ -38,13 +38,13 @@ export class PrescriptionItem {
   unitPriceAtPrescription: number;
 
   @ManyToOne(() => Prescription, (p) => p.items, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'prescription_id' })
+  @JoinColumn({ name: 'id_don_thuoc' })
   prescription?: Prescription;
 
   @ManyToOne(() => Drug, (d) => d.prescriptionItems, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'drug_id' })
+  @JoinColumn({ name: 'id_thuoc' })
   drug?: Drug;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 }

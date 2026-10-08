@@ -9,6 +9,8 @@ import {
   Query,
   Inject,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -57,9 +59,11 @@ export class PatientsController {
   @Post()
   @ApiOperation({ summary: 'Thêm mới hồ sơ bệnh nhân' })
   async create(@Body() dto: CreatePatientDto) {
-    return await firstValueFrom(
-      this.patientClient.send(MSG.PATIENT_CREATE, dto),
-    );
+    try {
+      return await firstValueFrom(this.patientClient.send(MSG.PATIENT_CREATE, dto));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
 
   @Put(':id')
@@ -68,16 +72,29 @@ export class PatientsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePatientDto,
   ) {
-    return await firstValueFrom(
-      this.patientClient.send(MSG.PATIENT_UPDATE, { id, dto }),
-    );
+    try {
+      return await firstValueFrom(this.patientClient.send(MSG.PATIENT_UPDATE, { id, dto }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Xóa hồ sơ bệnh nhân' })
   async delete(@Param('id', ParseIntPipe) id: number) {
-    return await firstValueFrom(
-      this.patientClient.send(MSG.PATIENT_DELETE, { id }),
-    );
+    try {
+      return await firstValueFrom(this.patientClient.send(MSG.PATIENT_DELETE, { id }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
   }
+}
+
+function toHttpException(error: any) {
+  const message = error?.message || error?.error?.message || 'Không thể thực hiện thao tác bệnh nhân';
+  const candidateStatus = error?.statusCode || error?.status || error?.error?.statusCode;
+  const status = Number.isInteger(candidateStatus) && candidateStatus >= 400 && candidateStatus <= 599
+    ? candidateStatus
+    : HttpStatus.BAD_REQUEST;
+  return new HttpException(message, status);
 }

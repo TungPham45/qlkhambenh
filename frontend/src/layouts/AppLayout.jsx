@@ -92,26 +92,6 @@ const ROLE_MENUS = {
     },
   ],
 
-  letan: [
-    {
-      to: "/reception-appointments",
-      label: "Quản lý lịch khám",
-      icon: CalendarDays,
-    },
-
-    {
-      to: "/patients",
-      label: "Quản lý bệnh nhân",
-      icon: Users,
-    },
-
-    {
-      to: "/reception-billing",
-      label: "Thanh toán",
-      icon: CreditCard,
-    },
-  ],
-
   nguoidung: [
     {
       to: "/my-appointments",
@@ -148,7 +128,7 @@ export function AppLayout() {
     toggleTheme,
   } = useTheme();
   const userRole = String(
-    user?.VaiTro || ""
+    user?.VaiTro || user?.role || ""
   ).toLowerCase();
   const navItems = useMemo(() => {
     return (

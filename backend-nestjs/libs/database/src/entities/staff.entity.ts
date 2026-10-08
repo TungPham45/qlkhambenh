@@ -6,39 +6,41 @@ import {
   UpdateDateColumn,
   OneToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Gender } from '@app/common';
 import { Account } from './account.entity';
 import { Appointment } from './appointment.entity';
 import { MedicalRecord } from './medical-record.entity';
 
-@Entity('staff')
+@Entity('bac_si')
 export class Staff {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { type: 'bigint', name: 'id_bac_si' })
   id: number;
 
-  @Column({ name: 'full_name', length: 150 })
+  @Column({ name: 'id_tai_khoan', type: 'uuid', unique: true })
+  accountId: string;
+
+  @Column({ name: 'ho_ten', length: 150 })
   fullName: string;
 
-  @Column({ name: 'date_of_birth', type: 'date', nullable: true })
+  @Column({ name: 'ngay_sinh', type: 'date', nullable: true })
   dateOfBirth: string;
 
-  @Column({ type: 'varchar', length: 10, nullable: true })
+  @Column({ name: 'gioi_tinh', type: 'varchar', length: 20, nullable: true })
   gender: Gender;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ name: 'so_dien_thoai', length: 20, nullable: true })
   phone: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ name: 'bang_cap', length: 255, nullable: true })
   specialty: string;
 
-  @Column({ length: 50, nullable: true, unique: true })
-  username: string;
-
-  @Column({ length: 20, default: 'Active' })
+  @Column({ name: 'trang_thai', length: 30, default: 'Active' })
   status: string;
 
   @OneToOne(() => Account, (acc) => acc.staff)
+  @JoinColumn({ name: 'id_tai_khoan' })
   account?: Account;
 
   @OneToMany(() => Appointment, (appt) => appt.doctor)
@@ -47,9 +49,9 @@ export class Staff {
   @OneToMany(() => MedicalRecord, (rec) => rec.doctor)
   medicalRecords?: MedicalRecord[];
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

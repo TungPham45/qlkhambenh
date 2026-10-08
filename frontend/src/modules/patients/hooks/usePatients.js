@@ -10,7 +10,7 @@ export function usePatients() {
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [query, setQuery] = useState({ page: 1, limit: 20 });
+  const [query, setQuery] = useState({ page: 1, limit: 4 });
 
   const load = useCallback(async (nextQuery = query) => {
     setLoading(true);
@@ -36,7 +36,7 @@ export function usePatients() {
           result = { rows: [], pagination: medicalRecordResult.pagination };
         }
       } else {
-        // Admin, LeTan, và NguoiDung xem tất cả bệnh nhân
+        // Admin và bệnh nhân lấy dữ liệu theo quyền từ API.
         result = await listPatients(nextQuery);
       }
       
@@ -55,12 +55,13 @@ export function usePatients() {
   }, []);
 
   async function save(patient) {
-    if (patient.MaBN) {
+    const isNewPatient = !patient.MaBN;
+    if (!isNewPatient) {
       await updatePatient(patient.MaBN, patient);
     } else {
       await createPatient(patient);
     }
-    await load(query);
+    await load({ ...query, page: isNewPatient ? 1 : query.page });
   }
 
   async function remove(id) {

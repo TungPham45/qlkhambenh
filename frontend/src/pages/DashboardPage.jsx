@@ -1,52 +1,33 @@
-import { CalendarDays, CreditCard, Users, UserRoundCheck } from "lucide-react";
+import { Building2, Stethoscope, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { httpClient } from "../api/httpClient.js";
-import { endpoints } from "../api/endpoints.js";
-import { formatCurrency } from "../utils/formatters.js";
-
-const fallbackCards = [
-  { label: "Bệnh nhân", value: "-", icon: Users, class: "kpi-blue" },
-  { label: "Lịch hẹn hôm nay", value: "-", icon: CalendarDays, class: "kpi-green" },
-  { label: "Doanh thu hôm nay", value: "-", icon: CreditCard, class: "kpi-orange" },
-  { label: "Bác sĩ hoạt động", value: "-", icon: UserRoundCheck, class: "kpi-purple" }
-];
 
 export function DashboardPage() {
-  const [summary, setSummary] = useState(null);
+  const [summary, setSummary] = useState({ patients: "-", doctors: "-", specialties: "-" });
 
   useEffect(() => {
-    httpClient.get(endpoints.analytics.dashboard)
-      .then((response) => setSummary(response.data?.summary || null))
-      .catch(() => setSummary(null));
+    Promise.all([
+      httpClient.get("/patients", { params: { page: 1, limit: 1 } }),
+      httpClient.get("/staff", { params: { page: 1, limit: 1 } }),
+      httpClient.get("/specialties", { params: { page: 1, limit: 1 } }),
+    ]).then(([patients, doctors, specialties]) => setSummary({ patients: patients.pagination?.total ?? 0, doctors: doctors.pagination?.total ?? 0, specialties: specialties.pagination?.total ?? 0 })).catch(() => {});
   }, []);
 
-  const cards = summary ? [
-    { label: "Bệnh nhân", value: summary.total_patients, icon: Users, class: "kpi-blue" },
-    { label: "Lịch hẹn hôm nay", value: summary.appointments_today, icon: CalendarDays, class: "kpi-green" },
-    { label: "Doanh thu hôm nay", value: formatCurrency(summary.revenue_today), icon: CreditCard, class: "kpi-orange" },
-    { label: "Bác sĩ hoạt động", value: summary.active_doctors, icon: UserRoundCheck, class: "kpi-purple" }
-  ] : fallbackCards;
+  const cards = [
+    { label: "Tổng số bệnh nhân", value: summary.patients, icon: Users, to: "/patients" },
+    { label: "Tổng số bác sĩ", value: summary.doctors, icon: Stethoscope, to: "/staff" },
+    { label: "Tổng số chuyên khoa", value: summary.specialties, icon: Building2, to: "/specialties" },
+  ];
 
   return (
-    <div className="grid gap-6">
-      <div className="page-toolbar">
-        <div>
-          <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
-        </div>
-      </div>
-      <section className="kpi-grid">
+    <div className="admin-page">
+      <div className="admin-page-head"><div><h1>Tổng Quan Quản Trị</h1><p>Truy cập nhanh các khu vực quản lý chính của bệnh viện.</p></div></div>
+      <section className="admin-dashboard-grid">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <article className={`kpi-card ${card.class}`} key={card.label}>
-              <div className="kpi-icon">
-                <Icon />
-              </div>
-              <div>
-                <p className="kpi-label">{card.label}</p>
-                <strong className="kpi-value">{card.value}</strong>
-              </div>
-            </article>
+            <Link className="admin-dashboard-card" key={card.label} to={card.to}><Icon size={26} /><span>{card.label}</span><strong>{typeof card.value === "number" ? card.value.toLocaleString("vi-VN") : card.value}</strong></Link>
           );
         })}
       </section>

@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 import {
   hasAnyRole,
+  getRoleHomeRoute,
 } from "../utils/roles.js";
 
 export function ProtectedRoute({
@@ -51,7 +52,7 @@ export function ProtectedRoute({
   ) {
     return (
       <Navigate
-        to="/dashboard"
+        to={getRoleHomeRoute(user)}
         replace
         state={{
           unauthorized: true,

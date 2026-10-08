@@ -1,6 +1,7 @@
-import { ResourceListPage } from "../crud/ResourceListPage.jsx";
+import { Stethoscope } from "lucide-react";
+import { AdminResourceListPage } from "../admin/AdminResourceListPage.jsx";
 import { resourceConfigs } from "../crud/resourceConfigs.js";
 
 export function StaffPage() {
-  return <ResourceListPage config={resourceConfigs.staff} />;
+  return <AdminResourceListPage config={{ ...resourceConfigs.staff, summaryIcon: Stethoscope }} />;
 }

@@ -95,11 +95,21 @@ export class RegisterDto {
 
   @IsOptional()
   @IsString()
-  medicalHistory?: string;
+  email?: string;
 
   @IsOptional()
   @IsString()
-  TienSuBenh?: string;
+  healthInsuranceNumber?: string;
+}
+
+export class UpdateProfileDto {
+  @IsOptional() @IsString() fullName?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() email?: string;
+  @IsOptional() @IsDateString() dateOfBirth?: string;
+  @IsOptional() @IsEnum(Gender) gender?: Gender;
+  @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() healthInsuranceNumber?: string;
 }
 
 export class CreateAccountDto {
@@ -174,9 +184,29 @@ export class CreateStaffDto {
   @IsOptional()
   @IsString()
   username?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 }
 
 export class UpdateStaffDto extends CreateStaffDto {}
+
+export class CreateSpecialtyDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+}
+
+export class UpdateSpecialtyDto extends CreateSpecialtyDto {}
 
 // --- PATIENT DTOs ---
 export class CreatePatientDto {
@@ -202,11 +232,19 @@ export class CreatePatientDto {
 
   @IsOptional()
   @IsString()
-  medicalHistory?: string;
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  healthInsuranceNumber?: string;
 
   @IsOptional()
   @IsString()
   username?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 }
 
 export class UpdatePatientDto extends CreatePatientDto {}

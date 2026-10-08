@@ -22,13 +22,27 @@ export async function listPatientsByDoctorIds(patientIds, params = {}) {
 }
 
 export async function createPatient(payload) {
-  const response = await httpClient.post(endpoints.patients, payload);
+  const response = await httpClient.post(endpoints.patients, normalizePatientPayload(payload));
   return unwrapData(response);
 }
 
 export async function updatePatient(id, payload) {
-  const response = await httpClient.put(`${endpoints.patients}/${id}`, payload);
+  const response = await httpClient.put(`${endpoints.patients}/${id}`, normalizePatientPayload(payload));
   return unwrapData(response);
+}
+
+function normalizePatientPayload(payload) {
+  return {
+    fullName: payload.HoTen ?? payload.fullName,
+    dateOfBirth: payload.NgaySinh || payload.dateOfBirth || undefined,
+    gender: payload.GioiTinh ?? payload.gender,
+    phone: payload.SoDienThoai ?? payload.phone,
+    address: payload.DiaChi ?? payload.address,
+    email: payload.Email ?? payload.email,
+    healthInsuranceNumber: payload.SoBaoHiemYTe ?? payload.healthInsuranceNumber,
+    username: payload.TenDangNhap ?? payload.username,
+    password: payload.MatKhau || payload.password || undefined,
+  };
 }
 
 export async function deletePatient(id) {

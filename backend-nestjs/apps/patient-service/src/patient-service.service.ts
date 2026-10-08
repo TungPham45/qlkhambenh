@@ -1,20 +1,25 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
-import { Patient } from '@app/database';
-import { CreatePatientDto, UpdatePatientDto } from '@app/common';
+import { Repository } from 'typeorm';
+import { Account, Patient } from '@app/database';
+import { AccountStatus, CreatePatientDto, UpdatePatientDto, UserRole } from '@app/common';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class PatientServiceService {
   constructor(
     @InjectRepository(Patient)
     private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(Account)
+    private readonly accountRepo: Repository<Account>,
   ) {}
 
   async getAll(query: any, user: any) {
     const page = Math.max(1, parseInt(query?.page) || 1);
     const limit = Math.max(1, parseInt(query?.limit) || 20);
     const search = query?.search || query?.keyword || '';
+    const gender = query?.gender || '';
+    const status = query?.status || '';
 
     // Scope for NguoiDung
     if (user?.role === 'NguoiDung' && user?.patientId) {
@@ -25,18 +30,22 @@ export class PatientServiceService {
       };
     }
 
-    const where: any = {};
+    const builder = this.patientRepo.createQueryBuilder('patient')
+      .leftJoinAndSelect('patient.account', 'account')
+      .orderBy('patient.id', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
     if (search) {
-      // Search by name or phone
-      where.fullName = Like(`%${search}%`);
+      const rawPatientId = search.replace(/^BN-/i, '');
+      const exactPatientId = /^\d+$/.test(rawPatientId) ? String(Number(rawPatientId)) : rawPatientId;
+      builder.andWhere(
+        '(patient.fullName ILIKE :search OR patient.phone ILIKE :search OR CAST(patient.id AS TEXT) = :exact)',
+        { search: `%${search}%`, exact: exactPatientId },
+      );
     }
-
-    const [rows, total] = await this.patientRepo.findAndCount({
-      where: search ? [{ fullName: Like(`%${search}%`) }, { phone: Like(`%${search}%`) }] : {},
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { id: 'DESC' },
-    });
+    if (gender) builder.andWhere('patient.gender = :gender', { gender });
+    if (status) builder.andWhere('patient.status = :status', { status });
+    const [rows, total] = await builder.getManyAndCount();
 
     return {
       data: rows.map(this.formatPatient),
@@ -50,40 +59,101 @@ export class PatientServiceService {
   }
 
   async getById(id: number) {
-    const patient = await this.patientRepo.findOne({ where: { id } });
+    const patient = await this.patientRepo.findOne({ where: { id }, relations: ['account'] });
     if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
     return this.formatPatient(patient);
   }
 
   async create(dto: CreatePatientDto) {
-    const patient = this.patientRepo.create({
-      fullName: dto.fullName,
-      dateOfBirth: dto.dateOfBirth,
-      gender: dto.gender,
-      phone: dto.phone,
-      address: dto.address,
-      medicalHistory: dto.medicalHistory,
-      username: dto.username,
-    });
+    const username = dto.username?.trim();
+    if (!username) throw new BadRequestException('Tên đăng nhập là bắt buộc');
 
-    const saved = await this.patientRepo.save(patient);
-    return this.formatPatient(saved);
+    return this.patientRepo.manager.transaction(async (manager) => {
+      const accountRepo = manager.getRepository(Account);
+      const patientRepo = manager.getRepository(Patient);
+      const existingAccount = await accountRepo.findOne({ where: { username } });
+      let account: Account;
+
+      if (existingAccount) {
+        const existingPatient = await patientRepo.findOne({ where: { accountId: existingAccount.id } });
+        if (existingPatient || existingAccount.role !== UserRole.NGUOI_DUNG) {
+          throw new BadRequestException('Tên đăng nhập đã tồn tại');
+        }
+
+        account = existingAccount;
+        account.passwordHash = await bcrypt.hash(dto.password || '123456', 10);
+        account.status = AccountStatus.ACTIVE;
+        await accountRepo.save(account);
+      } else {
+        account = await accountRepo.save(accountRepo.create({
+          username,
+          passwordHash: await bcrypt.hash(dto.password || '123456', 10),
+          role: UserRole.NGUOI_DUNG,
+          status: AccountStatus.ACTIVE,
+        }));
+      }
+
+      const saved = await patientRepo.save(patientRepo.create({
+        accountId: account.id,
+        fullName: dto.fullName,
+        dateOfBirth: dto.dateOfBirth,
+        gender: dto.gender,
+        phone: dto.phone,
+        address: dto.address,
+        email: dto.email,
+        healthInsuranceNumber: dto.healthInsuranceNumber,
+        status: 'Active',
+      }));
+      saved.account = account;
+      return this.formatPatient(saved);
+    });
   }
 
   async update(id: number, dto: UpdatePatientDto) {
-    const patient = await this.patientRepo.findOne({ where: { id } });
-    if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
+    return this.patientRepo.manager.transaction(async (manager) => {
+      const accountRepo = manager.getRepository(Account);
+      const patientRepo = manager.getRepository(Patient);
+      const patient = await patientRepo.findOne({ where: { id }, relations: ['account'] });
+      if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
 
-    Object.assign(patient, dto);
-    const saved = await this.patientRepo.save(patient);
-    return this.formatPatient(saved);
+      Object.assign(patient, {
+        fullName: dto.fullName,
+        dateOfBirth: dto.dateOfBirth,
+        gender: dto.gender,
+        phone: dto.phone,
+        address: dto.address,
+        email: dto.email,
+        healthInsuranceNumber: dto.healthInsuranceNumber,
+      });
+      if (dto.username && patient.account && dto.username !== patient.account.username) {
+        const username = dto.username.trim();
+        const existingAccount = await accountRepo.findOne({ where: { username } });
+        if (existingAccount && existingAccount.id !== patient.account.id) {
+          throw new BadRequestException('Tên đăng nhập đã tồn tại');
+        }
+        patient.account.username = username;
+        await accountRepo.save(patient.account);
+      }
+      return this.formatPatient(await patientRepo.save(patient));
+    });
   }
 
   async delete(id: number) {
-    const patient = await this.patientRepo.findOne({ where: { id } });
-    if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
-    await this.patientRepo.remove(patient);
-    return { success: true, message: 'Đã xóa bệnh nhân' };
+    try {
+      return await this.patientRepo.manager.transaction(async (manager) => {
+        const accountRepo = manager.getRepository(Account);
+        const patientRepo = manager.getRepository(Patient);
+        const patient = await patientRepo.findOne({ where: { id }, relations: ['account'] });
+        if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
+
+        await patientRepo.remove(patient);
+        if (patient.account) await accountRepo.remove(patient.account);
+        return { success: true, message: 'Đã xóa bệnh nhân và tài khoản đăng nhập' };
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Không thể xóa bệnh nhân vì đã có dữ liệu khám hoặc hồ sơ liên quan');
+    }
   }
 
   private formatPatient(p: Patient) {
@@ -100,10 +170,14 @@ export class PatientServiceService {
       phone: p.phone,
       DiaChi: p.address,
       address: p.address,
-      TienSuBenh: p.medicalHistory,
-      medicalHistory: p.medicalHistory,
-      TenDangNhap: p.username,
-      username: p.username,
+      Email: p.email,
+      email: p.email,
+      SoBaoHiemYTe: p.healthInsuranceNumber,
+      healthInsuranceNumber: p.healthInsuranceNumber,
+      TrangThai: p.status,
+      status: p.status,
+      TenDangNhap: p.account?.username,
+      username: p.account?.username,
       createdAt: p.createdAt,
     };
   }

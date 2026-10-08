@@ -10,6 +10,7 @@ import { Prescription } from './entities/prescription.entity';
 import { PrescriptionItem } from './entities/prescription-item.entity';
 import { Invoice } from './entities/invoice.entity';
 import { ComputedMetric } from './entities/computed-metric.entity';
+import { Specialty } from './entities/specialty.entity';
 
 export const ALL_ENTITIES = [
   Account,
@@ -22,6 +23,7 @@ export const ALL_ENTITIES = [
   PrescriptionItem,
   Invoice,
   ComputedMetric,
+  Specialty,
 ];
 
 @Module({

@@ -79,19 +79,6 @@ async function seed() {
     });
   }
 
-  let letan = await staffRepo.findOne({ where: { username: 'letan1' } });
-  if (!letan) {
-    letan = await staffRepo.save({
-      fullName: 'Lê Thị Thu Ngân',
-      dateOfBirth: '1995-12-01',
-      gender: Gender.NU,
-      phone: '0903333333',
-      specialty: 'Lễ tân',
-      username: 'letan1',
-      status: 'Active',
-    });
-  }
-
   // 2. Patients
   const patientRepo = dataSource.getRepository(Patient);
   let patient1 = await patientRepo.findOne({ where: { username: 'bn1' } });
@@ -126,7 +113,6 @@ async function seed() {
     { username: 'admin', role: UserRole.ADMIN, staffId: null, patientId: null },
     { username: 'bs1', role: UserRole.BAC_SI, staffId: Number(doc1.id), patientId: null },
     { username: 'bs2', role: UserRole.BAC_SI, staffId: Number(doc2.id), patientId: null },
-    { username: 'letan1', role: UserRole.LE_TAN, staffId: Number(letan.id), patientId: null },
     { username: 'bn1', role: UserRole.NGUOI_DUNG, staffId: null, patientId: Number(patient1.id) },
     { username: 'bn2', role: UserRole.NGUOI_DUNG, staffId: null, patientId: Number(patient2.id) },
   ];

@@ -9,3 +9,4 @@ export * from './entities/prescription.entity';
 export * from './entities/prescription-item.entity';
 export * from './entities/invoice.entity';
 export * from './entities/computed-metric.entity';
+export * from './entities/specialty.entity';

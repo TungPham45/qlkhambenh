@@ -8,35 +8,35 @@ import {
 } from 'typeorm';
 import { PrescriptionItem } from './prescription-item.entity';
 
-@Entity('drugs')
+@Entity('thuoc')
 export class Drug {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('increment', { type: 'bigint', name: 'id_thuoc' })
   id: number;
 
-  @Column({ name: 'drug_name', length: 150 })
+  @Column({ name: 'ten_thuoc', length: 255 })
   drugName: string;
 
-  @Column({ length: 50 })
+  @Column({ name: 'don_vi', length: 50, nullable: true })
   unit: string;
 
-  @Column({ name: 'unit_price', type: 'numeric', precision: 12, scale: 2 })
+  @Column({ name: 'don_gia', type: 'numeric', precision: 12, scale: 2 })
   unitPrice: number;
 
-  @Column({ name: 'stock_quantity', type: 'int', default: 0 })
+  @Column({ name: 'so_luong_ton', type: 'int', default: 0 })
   stockQuantity: number;
 
-  @Column({ name: 'expiry_date', type: 'date', nullable: true })
+  @Column({ name: 'han_su_dung', type: 'date', nullable: true })
   expiryDate: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
+  @Column({ name: 'dang_hoat_dong', type: 'boolean', default: true })
   isActive: boolean;
 
   @OneToMany(() => PrescriptionItem, (item) => item.drug)
   prescriptionItems?: PrescriptionItem[];
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'ngay_cap_nhat', type: 'timestamptz' })
   updatedAt: Date;
 }

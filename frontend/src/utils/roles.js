@@ -8,7 +8,16 @@ export function hasAnyRole(user, allowedRoles = []) {
 }
 
 export const roles = {
-  admin: ["Admin", "admin"],
-  staff: ["Admin", "BacSi", "LeTan"],
-  patient: ["NguoiDung"]
+  admin: ["Admin"],
+  doctor: ["BacSi"],
+  clinical: ["Admin", "BacSi"],
+  patient: ["NguoiDung"],
 };
+
+export function getRoleHomeRoute(user) {
+  const role = String(user?.VaiTro || user?.role || "").toLowerCase();
+
+  if (role === "admin") return "/dashboard";
+  if (role === "bacsi") return "/doctor-schedule";
+  return "/";
+}

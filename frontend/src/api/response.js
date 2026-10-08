@@ -1,7 +1,18 @@
+function parsePayload(payload) {
+  if (typeof payload !== "string") return payload;
+
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return payload;
+  }
+}
+
 export function unwrapRows(payload) {
-  const data = payload?.data;
+  const normalizedPayload = parsePayload(payload);
+  const data = normalizedPayload?.data;
   if (Array.isArray(data)) {
-    return { rows: data, pagination: null };
+    return { rows: data, pagination: normalizedPayload.pagination || null };
   }
   if (Array.isArray(data?.data)) {
     return { rows: data.data, pagination: data.pagination || null };
@@ -10,5 +21,6 @@ export function unwrapRows(payload) {
 }
 
 export function unwrapData(payload) {
-  return payload?.data ?? null;
+  const normalizedPayload = parsePayload(payload);
+  return normalizedPayload?.data ?? normalizedPayload ?? null;
 }

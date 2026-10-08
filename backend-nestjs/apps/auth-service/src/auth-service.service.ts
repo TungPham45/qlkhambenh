@@ -15,6 +15,7 @@ import {
   RegisterDto,
   CreateAccountDto,
   UpdateAccountDto,
+  UpdateProfileDto,
   UserRole,
   AccountStatus,
   Gender,
@@ -68,8 +69,8 @@ export class AuthServiceService {
       sub: account.id,
       username: account.username,
       role: account.role,
-      patientId: account.patientId || account.patient?.id,
-      staffId: account.staffId || account.staff?.id,
+      patientId: account.patient?.id,
+      staffId: account.staff?.id,
     };
 
     const token = this.jwtService.sign(payload);
@@ -83,10 +84,16 @@ export class AuthServiceService {
         VaiTro: account.role,
         status: account.status,
         TrangThai: account.status,
-        MaBN: account.patientId || account.patient?.id,
-        MaNV: account.staffId || account.staff?.id,
+        MaBN: account.patient?.id,
+        MaNV: account.staff?.id,
         fullName: account.staff?.fullName || account.patient?.fullName || account.username,
         HoTen: account.staff?.fullName || account.patient?.fullName || account.username,
+        phone: account.staff?.phone || account.patient?.phone,
+        email: account.patient?.email,
+        dateOfBirth: account.staff?.dateOfBirth || account.patient?.dateOfBirth,
+        gender: account.staff?.gender || account.patient?.gender,
+        address: account.patient?.address,
+        healthInsuranceNumber: account.patient?.healthInsuranceNumber,
       },
     };
   }
@@ -99,7 +106,8 @@ export class AuthServiceService {
     const dateOfBirth = dto.dateOfBirth || dto.NgaySinh;
     const gender = (dto.gender || dto.GioiTinh || Gender.NAM) as Gender;
     const address = dto.address || dto.DiaChi;
-    const medicalHistory = dto.medicalHistory || dto.TienSuBenh;
+    const email = dto.email?.trim();
+    const healthInsuranceNumber = dto.healthInsuranceNumber?.trim();
 
     if (!username || !password || !fullName || !phone) {
       throw new BadRequestException('Vui lòng điền đầy đủ các thông tin bắt buộc');
@@ -113,31 +121,26 @@ export class AuthServiceService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 1. Tạo Bệnh nhân
-    const patient = this.patientRepo.create({
-      fullName,
-      phone,
-      dateOfBirth,
-      gender,
-      address,
-      medicalHistory,
-      username,
-    });
-    const savedPatient = await this.patientRepo.save(patient);
-
-    // 2. Tạo Tài khoản liên kết
     const account = this.accountRepo.create({
       username,
       passwordHash,
       role: UserRole.NGUOI_DUNG,
       status: AccountStatus.ACTIVE,
-      patientId: savedPatient.id,
     });
     const savedAccount = await this.accountRepo.save(account);
 
-    // Cập nhật account_id cho patient
-    savedPatient.account = savedAccount;
-    await this.patientRepo.save(savedPatient);
+    const patient = this.patientRepo.create({
+      accountId: savedAccount.id,
+      fullName,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      email,
+      healthInsuranceNumber,
+      status: 'Active',
+    });
+    const savedPatient = await this.patientRepo.save(patient);
 
     this.logger.log(`User registered successfully: ${username}`);
 
@@ -171,8 +174,8 @@ export class AuthServiceService {
       role: a.role,
       TrangThai: a.status,
       status: a.status,
-      MaBN: a.patientId || a.patient?.id || null,
-      MaNV: a.staffId || a.staff?.id || null,
+      MaBN: a.patient?.id || null,
+      MaNV: a.staff?.id || null,
       createdAt: a.createdAt,
     }));
 
@@ -210,8 +213,6 @@ export class AuthServiceService {
       passwordHash,
       role: dto.role,
       status: dto.status || AccountStatus.ACTIVE,
-      patientId: dto.patientId,
-      staffId: dto.staffId,
     });
 
     const saved = await this.accountRepo.save(account);
@@ -219,8 +220,8 @@ export class AuthServiceService {
       TenDangNhap: saved.username,
       VaiTro: saved.role,
       TrangThai: saved.status,
-      MaBN: saved.patientId,
-      MaNV: saved.staffId,
+      MaBN: null,
+      MaNV: null,
     };
   }
 
@@ -234,16 +235,13 @@ export class AuthServiceService {
     }
     if (dto.role) account.role = dto.role;
     if (dto.status) account.status = dto.status;
-    if (dto.patientId !== undefined) account.patientId = dto.patientId;
-    if (dto.staffId !== undefined) account.staffId = dto.staffId;
-
     const saved = await this.accountRepo.save(account);
     return {
       TenDangNhap: saved.username,
       VaiTro: saved.role,
       TrangThai: saved.status,
-      MaBN: saved.patientId,
-      MaNV: saved.staffId,
+      MaBN: null,
+      MaNV: null,
     };
   }
 
@@ -252,5 +250,52 @@ export class AuthServiceService {
     if (!account) throw new NotFoundException('Không tìm thấy tài khoản');
     await this.accountRepo.remove(account);
     return { success: true, message: 'Đã xóa tài khoản' };
+  }
+
+  async updateProfile(accountId: string, dto: UpdateProfileDto) {
+    const account = await this.accountRepo.findOne({
+      where: { id: accountId },
+      relations: ['patient', 'staff'],
+    });
+    if (!account) throw new NotFoundException('Không tìm thấy tài khoản');
+
+    if (account.patient) {
+      Object.assign(account.patient, dto);
+      const patient = await this.patientRepo.save(account.patient);
+      return { user: this.formatProfile(account, patient) };
+    }
+
+    if (account.staff) {
+      Object.assign(account.staff, {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        dateOfBirth: dto.dateOfBirth,
+        gender: dto.gender,
+      });
+      const staff = await this.staffRepo.save(account.staff);
+      return { user: this.formatProfile(account, undefined, staff) };
+    }
+
+    throw new BadRequestException('Tài khoản chưa có hồ sơ liên kết');
+  }
+
+  private formatProfile(account: Account, patient?: Patient, staff?: Staff) {
+    const profile = patient || staff;
+    return {
+      id: account.id,
+      username: account.username,
+      role: account.role,
+      VaiTro: account.role,
+      fullName: profile?.fullName || account.username,
+      HoTen: profile?.fullName || account.username,
+      phone: profile?.phone,
+      dateOfBirth: profile?.dateOfBirth,
+      gender: profile?.gender,
+      email: patient?.email,
+      address: patient?.address,
+      healthInsuranceNumber: patient?.healthInsuranceNumber,
+      MaBN: patient?.id,
+      MaNV: staff?.id,
+    };
   }
 }
