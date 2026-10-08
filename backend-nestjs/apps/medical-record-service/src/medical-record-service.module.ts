@@ -4,6 +4,8 @@ import { DatabaseModule } from '@app/database';
 import { REDIS_SERVICES } from '@app/common';
 import { MedicalRecordServiceController } from './medical-record-service.controller';
 import { MedicalRecordServiceService } from './medical-record-service.service';
+import { DiseaseCatalogController } from './disease-catalog.controller';
+import { DiseaseCatalogService } from './disease-catalog.service';
 
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { MedicalRecordServiceService } from './medical-record-service.service';
       },
     ]),
   ],
-  controllers: [MedicalRecordServiceController],
-  providers: [MedicalRecordServiceService],
+  controllers: [MedicalRecordServiceController, DiseaseCatalogController],
+  providers: [MedicalRecordServiceService, DiseaseCatalogService],
 })
 export class MedicalRecordServiceModule {}

@@ -1,14 +1,17 @@
-import { BookOpen, Building2, ChevronDown, Hospital, LayoutDashboard, LogOut, Menu, Pill, Sparkles, Stethoscope, Users } from "lucide-react";
+import { BookOpen, Building2, ChevronDown, ClipboardCheck, History, Hospital, LayoutDashboard, LogOut, Menu, Pill, Sparkles, Stethoscope, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { NotificationBell } from "../modules/notifications/NotificationBell.jsx";
 
 const adminMenu = [
   { to: "/patients", label: "Quản lý Bệnh nhân", icon: Users },
   { to: "/staff", label: "Quản lý Bác sĩ", icon: Stethoscope },
   { to: "/specialties", label: "Quản lý Chuyên khoa", icon: Building2 },
   { to: "/pharmacy", label: "Quản lý Thuốc", icon: Pill },
-  { to: "/diseases", label: "Danh mục Bệnh", icon: BookOpen },
+  { to: "/admin/diseases", label: "Danh mục Bệnh", icon: BookOpen },
+  { to: "/reception", label: "Tiếp nhận bệnh nhân", icon: ClipboardCheck },
+  { to: "/medical-history", label: "Tra cứu lịch sử khám", icon: History },
   { to: "/drug-suggestions", label: "Gợi ý Thuốc", icon: Sparkles },
 ];
 
@@ -19,6 +22,10 @@ const pageNames = {
   "/specialties": "Quản lý Chuyên khoa",
   "/pharmacy": "Quản lý Thuốc",
   "/diseases": "Danh mục Bệnh",
+  "/admin/diseases": "Danh mục Bệnh",
+  "/reception": "Tiếp nhận bệnh nhân",
+  "/medical-history": "Tra cứu lịch sử khám",
+  "/notifications": "Thông báo",
   "/drug-suggestions": "Gợi ý Thuốc",
 };
 
@@ -56,12 +63,15 @@ export function AdminLayout() {
       <section className="admin-main">
         <header className="admin-topbar">
           <div className="admin-breadcrumb"><button type="button" onClick={() => setSidebarOpen((value) => !value)}><Menu size={20} /></button><Link to="/dashboard">Admin</Link><span>/</span><strong>{pageName}</strong></div>
-          <div className="admin-user-wrap">
-            <button className="admin-user-trigger" type="button" onClick={() => setUserOpen((value) => !value)}>
-              <span className="admin-user-avatar">{displayName.charAt(0).toUpperCase()}</span>
-              <span><strong>{displayName}</strong><small>Quản trị viên</small></span><ChevronDown size={17} />
-            </button>
-            {userOpen ? <div className="admin-user-menu"><button type="button" onClick={handleLogout}><LogOut size={16} /> Đăng xuất</button></div> : null}
+          <div className="flex items-center gap-3">
+            <NotificationBell admin />
+            <div className="admin-user-wrap">
+              <button className="admin-user-trigger" type="button" onClick={() => setUserOpen((value) => !value)}>
+                <span className="admin-user-avatar">{displayName.charAt(0).toUpperCase()}</span>
+                <span><strong>{displayName}</strong><small>Quản trị viên</small></span><ChevronDown size={17} />
+              </button>
+              {userOpen ? <div className="admin-user-menu"><button type="button" onClick={handleLogout}><LogOut size={16} /> Đăng xuất</button></div> : null}
+            </div>
           </div>
         </header>
         <main className="admin-content"><Outlet /></main>

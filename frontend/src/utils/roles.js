@@ -12,6 +12,7 @@ export const roles = {
   doctor: ["BacSi"],
   clinical: ["Admin", "BacSi"],
   patient: ["NguoiDung"],
+  all: ["Admin", "BacSi", "NguoiDung"],
 };
 
 export function getRoleHomeRoute(user) {

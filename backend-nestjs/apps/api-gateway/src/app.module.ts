@@ -17,6 +17,9 @@ import { PharmacyController } from './pharmacy/pharmacy.controller';
 import { BillingController } from './billing/billing.controller';
 import { AnalyticsController } from './analytics/analytics.controller';
 import { StatisticsController } from './statistics/statistics.controller';
+import { DiseasesController } from './diseases/diseases.controller';
+import { ReceptionController } from './reception/reception.controller';
+import { NotificationsController } from './notifications/notifications.controller';
 
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
@@ -63,6 +66,9 @@ const createRedisClient = (name: string) => ({
     BillingController,
     AnalyticsController,
     StatisticsController,
+    DiseasesController,
+    ReceptionController,
+    NotificationsController,
   ],
   providers: [
     JwtStrategy,

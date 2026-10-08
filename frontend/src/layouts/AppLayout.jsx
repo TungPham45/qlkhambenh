@@ -1,8 +1,9 @@
 import { NavLink, Outlet,} from "react-router-dom";
-import { BarChart3, CalendarDays, ChartNoAxesCombined, ClipboardList, CreditCard, FileText, LayoutDashboard, LogOut, Menu, Moon, Pill, Sun, UserCog, Users,} from "lucide-react";
+import { BarChart3, Bell, CalendarDays, ChartNoAxesCombined, ClipboardCheck, ClipboardList, CreditCard, FileText, History, LayoutDashboard, LogOut, Menu, Moon, Pill, Sun, UserCog, Users,} from "lucide-react";
 import { useMemo, useState,} from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
+import { NotificationBell } from "../modules/notifications/NotificationBell.jsx";
 const ROLE_MENUS = {
   admin: [
     {
@@ -42,6 +43,18 @@ const ROLE_MENUS = {
     },
 
     {
+      to: "/medical-history",
+      label: "Lịch sử khám",
+      icon: History,
+    },
+
+    {
+      to: "/reception",
+      label: "Tiếp nhận bệnh nhân",
+      icon: ClipboardCheck,
+    },
+
+    {
       to: "/accounts",
       label: "Tài khoản",
       icon: UserCog,
@@ -64,6 +77,12 @@ const ROLE_MENUS = {
       label: "Thống kê",
       icon: BarChart3,
     },
+
+    {
+      to: "/notifications",
+      label: "Thông báo",
+      icon: Bell,
+    },
   ],
 
   bacsi: [
@@ -80,6 +99,18 @@ const ROLE_MENUS = {
     },
 
     {
+      to: "/reception",
+      label: "Tiếp nhận bệnh nhân",
+      icon: ClipboardCheck,
+    },
+
+    {
+      to: "/medical-history",
+      label: "Tra cứu lịch sử khám",
+      icon: History,
+    },
+
+    {
       to: "/medical-records",
       label: "Hồ sơ bệnh án",
       icon: FileText,
@@ -89,6 +120,12 @@ const ROLE_MENUS = {
       to: "/pharmacy",
       label: "Kho thuốc",
       icon: Pill,
+    },
+
+    {
+      to: "/notifications",
+      label: "Thông báo",
+      icon: Bell,
     },
   ],
 
@@ -113,8 +150,14 @@ const ROLE_MENUS = {
 
     {
       to: "/my-records",
-      label: "Bệnh án của tôi",
+      label: "Lịch sử khám của tôi",
       icon: ClipboardList,
+    },
+
+    {
+      to: "/notifications",
+      label: "Thông báo",
+      icon: Bell,
     },
   ],
 };
@@ -216,6 +259,7 @@ export function AppLayout() {
           </div>
 
           <div className="topbar-actions">
+            <NotificationBell />
             <button
               className="icon-btn"
               type="button"

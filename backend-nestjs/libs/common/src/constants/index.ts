@@ -42,6 +42,11 @@ export enum PrescriptionStatus {
   CANCELLED = 'Cancelled',
 }
 
+export enum DiseaseStatus {
+  ACTIVE = 'Active',
+  INACTIVE = 'Inactive',
+}
+
 export const REDIS_SERVICES = {
   AUTH_SERVICE: 'AUTH_SERVICE',
   PATIENT_SERVICE: 'PATIENT_SERVICE',
@@ -65,6 +70,16 @@ export const MSG = {
   AUTH_CREATE_ACCOUNT: { cmd: 'auth.create_account' },
   AUTH_UPDATE_ACCOUNT: { cmd: 'auth.update_account' },
   AUTH_DELETE_ACCOUNT: { cmd: 'auth.delete_account' },
+
+  // Notifications (owned by the authenticated account)
+  NOTIFICATION_GET_ALL: { cmd: 'notification.get_all' },
+  NOTIFICATION_UNREAD_COUNT: { cmd: 'notification.unread_count' },
+  NOTIFICATION_GET_BY_ID: { cmd: 'notification.get_by_id' },
+  NOTIFICATION_MARK_READ: { cmd: 'notification.mark_read' },
+  NOTIFICATION_MARK_ALL_READ: { cmd: 'notification.mark_all_read' },
+  NOTIFICATION_CREATE: { cmd: 'notification.create' },
+  NOTIFICATION_UPDATE: { cmd: 'notification.update' },
+  NOTIFICATION_DELETE: { cmd: 'notification.delete' },
 
   // Staff
   STAFF_GET_ALL: { cmd: 'staff.get_all' },
@@ -96,6 +111,12 @@ export const MSG = {
   APPT_DELETE: { cmd: 'appointment.delete' },
   APPT_GET_BY_DOCTOR: { cmd: 'appointment.get_by_doctor' },
 
+  // Patient reception
+  RECEPTION_GET_ALL: { cmd: 'reception.get_all' },
+  RECEPTION_GET_BY_APPOINTMENT: { cmd: 'reception.get_by_appointment' },
+  RECEPTION_CREATE: { cmd: 'reception.create' },
+  RECEPTION_UPDATE: { cmd: 'reception.update' },
+
   // Medical Records
   MED_REC_GET_ALL: { cmd: 'medical_record.get_all' },
   MED_REC_GET_BY_ID: { cmd: 'medical_record.get_by_id' },
@@ -103,6 +124,15 @@ export const MSG = {
   MED_REC_GET_BY_DOCTOR: { cmd: 'medical_record.get_by_doctor' },
   MED_REC_CREATE: { cmd: 'medical_record.create' },
   MED_REC_UPDATE: { cmd: 'medical_record.update' },
+  MED_REC_HISTORY: { cmd: 'medical_record.history' },
+  MED_REC_HISTORY_DETAIL: { cmd: 'medical_record.history_detail' },
+
+  // Disease catalog
+  DISEASE_GET_ALL: { cmd: 'disease.get_all' },
+  DISEASE_GET_BY_ID: { cmd: 'disease.get_by_id' },
+  DISEASE_CREATE: { cmd: 'disease.create' },
+  DISEASE_UPDATE: { cmd: 'disease.update' },
+  DISEASE_UPDATE_STATUS: { cmd: 'disease.update_status' },
 
   // Pharmacy
   DRUG_GET_ALL: { cmd: 'drug.get_all' },
@@ -142,6 +172,8 @@ export const MSG = {
 export const EVENTS = {
   AUTH_USER_REGISTERED: 'auth.user_registered',
   APPOINTMENT_CREATED: 'appointment.created',
+  APPOINTMENT_STATUS_CHANGED: 'appointment.status_changed',
+  PATIENT_RECEIVED: 'patient.received',
   APPOINTMENT_COMPLETED: 'appointment.completed',
   MEDICAL_RECORD_CREATED: 'medical_record.created',
   BILLING_INVOICE_CREATED: 'billing.invoice_created',

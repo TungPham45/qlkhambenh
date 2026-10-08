@@ -8,6 +8,7 @@ import {
   Query,
   Inject,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -17,7 +18,11 @@ import {
   MSG,
   CurrentUser,
   CreateMedicalRecordDto,
+  MedicalHistoryQueryDto,
+  Roles,
+  UserRole,
 } from '@app/common';
+import { RolesGuard } from '../guards/roles.guard';
 
 @ApiTags('Medical Records')
 @ApiBearerAuth()
@@ -33,6 +38,32 @@ export class MedicalRecordsController {
   async getAll(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
       this.medClient.send(MSG.MED_REC_GET_ALL, { query, user }),
+    );
+  }
+
+  @Get('history')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
+  @ApiOperation({ summary: 'Tra cứu lịch sử khám theo phạm vi người dùng' })
+  async getHistory(
+    @Query() query: MedicalHistoryQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return await firstValueFrom(
+      this.medClient.send(MSG.MED_REC_HISTORY, { query, user }),
+    );
+  }
+
+  @Get('history/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
+  @ApiOperation({ summary: 'Xem chi tiết một lần khám theo phạm vi người dùng' })
+  async getHistoryDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    return await firstValueFrom(
+      this.medClient.send(MSG.MED_REC_HISTORY_DETAIL, { id, user }),
     );
   }
 
@@ -61,21 +92,29 @@ export class MedicalRecordsController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Tạo phiếu khám bệnh' })
-  async create(@Body() dto: CreateMedicalRecordDto) {
+  async create(
+    @Body() dto: CreateMedicalRecordDto,
+    @CurrentUser() user: any,
+  ) {
     return await firstValueFrom(
-      this.medClient.send(MSG.MED_REC_CREATE, dto),
+      this.medClient.send(MSG.MED_REC_CREATE, { dto, user }),
     );
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Cập nhật phiếu khám' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: Partial<CreateMedicalRecordDto>,
+    @CurrentUser() user: any,
   ) {
     return await firstValueFrom(
-      this.medClient.send(MSG.MED_REC_UPDATE, { id, dto }),
+      this.medClient.send(MSG.MED_REC_UPDATE, { id, dto, user }),
     );
   }
 }

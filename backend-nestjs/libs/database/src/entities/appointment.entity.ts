@@ -13,6 +13,7 @@ import { AppointmentStatus } from '@app/common';
 import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { MedicalRecord } from './medical-record.entity';
+import { PatientReception } from './patient-reception.entity';
 
 @Entity('lich_hen')
 @Index(['doctorId', 'appointmentDate', 'appointmentTime'])
@@ -43,6 +44,9 @@ export class Appointment {
   @Column({ name: 'ghi_chu', type: 'text', nullable: true })
   notes: string;
 
+  @Column({ name: 'thoi_gian_check_in', type: 'timestamptz', nullable: true })
+  checkInAt: Date;
+
   @ManyToOne(() => Patient, (patient) => patient.appointments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'id_benh_nhan' })
   patient?: Patient;
@@ -53,6 +57,9 @@ export class Appointment {
 
   @OneToOne(() => MedicalRecord, (rec) => rec.appointment)
   medicalRecord?: MedicalRecord;
+
+  @OneToOne(() => PatientReception, (reception) => reception.appointment)
+  reception?: PatientReception;
 
   @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;

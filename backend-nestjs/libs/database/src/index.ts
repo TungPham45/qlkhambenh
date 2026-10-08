@@ -10,3 +10,7 @@ export * from './entities/prescription-item.entity';
 export * from './entities/invoice.entity';
 export * from './entities/computed-metric.entity';
 export * from './entities/specialty.entity';
+export * from './entities/disease-catalog.entity';
+export * from './entities/diagnosis.entity';
+export * from './entities/patient-reception.entity';
+export * from './entities/notification.entity';

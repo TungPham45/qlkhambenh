@@ -11,6 +11,10 @@ import { PrescriptionItem } from './entities/prescription-item.entity';
 import { Invoice } from './entities/invoice.entity';
 import { ComputedMetric } from './entities/computed-metric.entity';
 import { Specialty } from './entities/specialty.entity';
+import { DiseaseCatalog } from './entities/disease-catalog.entity';
+import { Diagnosis } from './entities/diagnosis.entity';
+import { PatientReception } from './entities/patient-reception.entity';
+import { Notification } from './entities/notification.entity';
 
 export const ALL_ENTITIES = [
   Account,
@@ -24,6 +28,10 @@ export const ALL_ENTITIES = [
   Invoice,
   ComputedMetric,
   Specialty,
+  DiseaseCatalog,
+  Diagnosis,
+  PatientReception,
+  Notification,
 ];
 
 @Module({

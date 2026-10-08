@@ -5,11 +5,16 @@ import { formatDate } from "../../utils/formatters.js";
 
 export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
   const [drugs, setDrugs] = useState([]);
+  const [diseases, setDiseases] = useState([]);
+  const [selectedDiseases, setSelectedDiseases] = useState([]);
+  const [catalogError, setCatalogError] = useState("");
   const [form, setForm] = useState({
     TrieuChung: "",
     ChanDoan: "",
     KetLuan: "",
     NgayKham: appointment?.NgayKham?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+    HuongDieuTri: "",
+    NgayTaiKham: "",
   });
   const [items, setItems] = useState([{ MaThuoc: "", SoLuong: 1, LieuDung: "" }]);
   const [ghiChu, setGhiChu] = useState("");
@@ -20,10 +25,29 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
     httpClient
       .get("/drugs", { params: { limit: 200 } })
       .then((r) => {
-        const rows = r.data?.data || r.data?.rows || [];
+        const rows = Array.isArray(r) ? r : r?.data || r?.rows || [];
         setDrugs(Array.isArray(rows) ? rows : []);
       })
-      .catch(() => setDrugs([]));
+      .catch((loadError) => {
+        console.error("Failed to load drugs:", loadError);
+        setDrugs([]);
+      });
+
+    httpClient
+      .get("/diseases", { params: { status: "Active", limit: 100 } })
+      .then((response) => {
+        const rows = Array.isArray(response)
+          ? response
+          : response?.data || response?.rows || [];
+        setDiseases(Array.isArray(rows) ? rows : []);
+        setCatalogError("");
+      })
+      .catch((loadError) => {
+        console.error("Failed to load disease catalog:", loadError);
+        setCatalogError(
+          loadError?.message || "Không thể tải danh mục bệnh; vẫn có thể nhập chẩn đoán bằng văn bản.",
+        );
+      });
   }, []);
 
   function setField(key, value) {
@@ -45,6 +69,37 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
     });
   }
 
+  function addDisease(diseaseId) {
+    const id = Number(diseaseId);
+    if (!id || selectedDiseases.some((item) => item.diseaseId === id)) return;
+    setSelectedDiseases((current) => [
+      ...current,
+      { diseaseId: id, isPrimary: current.length === 0, note: "" },
+    ]);
+  }
+
+  function setPrimaryDisease(diseaseId) {
+    setSelectedDiseases((current) =>
+      current.map((item) => ({
+        ...item,
+        isPrimary: item.diseaseId === diseaseId,
+      })),
+    );
+  }
+
+  function removeDisease(diseaseId) {
+    setSelectedDiseases((current) => {
+      const remaining = current.filter((item) => item.diseaseId !== diseaseId);
+      if (remaining.length && !remaining.some((item) => item.isPrimary)) {
+        return remaining.map((item, index) => ({
+          ...item,
+          isPrimary: index === 0,
+        }));
+      }
+      return remaining;
+    });
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -53,13 +108,16 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
     try {
       // 1. Tạo phiếu khám (medical record)
       const recordRes = await httpClient.post("/medical-records", {
-        MaLich: appointment.MaLich,
-        MaBN: appointment.MaBN,
-        MaBacSi: appointment.MaBacSi,
-        NgayKham: form.NgayKham,
-        TrieuChung: form.TrieuChung.trim() || null,
-        ChanDoan: form.ChanDoan.trim() || null,
-        KetLuan: form.KetLuan.trim() || null,
+        appointmentId: appointment.MaLich,
+        patientId: appointment.MaBN,
+        doctorId: appointment.MaBacSi,
+        examinationDate: form.NgayKham,
+        symptoms: form.TrieuChung.trim() || null,
+        diagnosis: form.ChanDoan.trim() || null,
+        conclusion: form.KetLuan.trim() || null,
+        treatmentDirection: form.HuongDieuTri.trim() || null,
+        followUpDate: form.NgayTaiKham || null,
+        diagnoses: selectedDiseases,
       });
 
       const newRecord = recordRes.data?.data || recordRes.data;
@@ -70,15 +128,15 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
       if (MaPhieu && validItems.length > 0) {
         try {
           await httpClient.post("/prescriptions", {
-            MaPhieu,
-            MaBN: appointment.MaBN,
-            MaBacSi: appointment.MaBacSi,
-            NgayKeDon: form.NgayKham,
-            GhiChu: ghiChu.trim() || null,
-            ChiTiet: validItems.map((item) => ({
-              MaThuoc: Number(item.MaThuoc),
-              SoLuong: Number(item.SoLuong),
-              LieuDung: String(item.LieuDung).trim(),
+            medicalRecordId: MaPhieu,
+            patientId: appointment.MaBN,
+            doctorId: appointment.MaBacSi,
+            prescriptionDate: form.NgayKham,
+            note: ghiChu.trim() || null,
+            items: validItems.map((item) => ({
+              drugId: Number(item.MaThuoc),
+              quantity: Number(item.SoLuong),
+              dosage: String(item.LieuDung).trim(),
             })),
           });
         } catch (prescriptionErr) {
@@ -91,7 +149,7 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
 
       // 3. Cập nhật trạng thái lịch
       await httpClient.patch(`/appointments/${appointment.MaLich}/status`, {
-        TrangThai: "Da kham",
+        status: "Da kham",
       });
 
       onSaved();
@@ -152,6 +210,92 @@ export function DoctorExamineForm({ appointment, patient, onSaved, onCancel }) {
                 placeholder="Kết luận và hướng điều trị..."
                 value={form.KetLuan}
                 onChange={(e) => setField("KetLuan", e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Chọn bệnh từ danh mục
+            <select
+              className="form-input"
+              value=""
+              onChange={(event) => addDisease(event.target.value)}
+            >
+              <option value="">-- Chọn bệnh đang hoạt động --</option>
+              {diseases
+                .filter(
+                  (disease) =>
+                    !selectedDiseases.some(
+                      (item) => item.diseaseId === Number(disease.id),
+                    ),
+                )
+                .map((disease) => (
+                  <option key={disease.id} value={disease.id}>
+                    {disease.code} · {disease.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {catalogError ? (
+            <p className="text-xs text-amber-700">{catalogError}</p>
+          ) : null}
+          {selectedDiseases.length ? (
+            <ul className="grid gap-2">
+              {selectedDiseases.map((item) => {
+                const disease = diseases.find(
+                  (candidate) => Number(candidate.id) === item.diseaseId,
+                );
+                return (
+                  <li
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                    key={item.diseaseId}
+                  >
+                    <span>
+                      <strong>{disease?.code}</strong> · {disease?.name}
+                      {item.isPrimary ? (
+                        <span className="ml-2 text-xs font-semibold text-blue-700">
+                          Chẩn đoán chính
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {!item.isPrimary ? (
+                        <button
+                          className="text-xs font-semibold text-blue-700"
+                          onClick={() => setPrimaryDisease(item.diseaseId)}
+                          type="button"
+                        >
+                          Chọn làm chính
+                        </button>
+                      ) : null}
+                      <button
+                        className="text-xs font-semibold text-rose-700"
+                        onClick={() => removeDisease(item.diseaseId)}
+                        type="button"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-1 text-sm font-medium text-slate-700">
+              Hướng điều trị
+              <textarea
+                className="form-input min-h-20"
+                value={form.HuongDieuTri}
+                onChange={(event) => setField("HuongDieuTri", event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1 text-sm font-medium text-slate-700">
+              Ngày tái khám
+              <input
+                className="form-input"
+                type="date"
+                value={form.NgayTaiKham}
+                onChange={(event) => setField("NgayTaiKham", event.target.value)}
               />
             </label>
           </div>

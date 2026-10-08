@@ -4,6 +4,7 @@ import {
 
 import { AppLayout } from "../layouts/AppLayout.jsx";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
+import { RoleBasedLayout } from "../layouts/RoleBasedLayout.jsx";
 import { ProtectedRoute } from "./ProtectedRoute.jsx";
 
 import { HomePage } from "../pages/HomePage.jsx";
@@ -23,6 +24,10 @@ import { AccountsPage } from "../modules/accounts/AccountsPage.jsx";
 import { StaffPage } from "../modules/accounts/StaffPage.jsx";
 import { SpecialtiesPage } from "../modules/specialties/SpecialtiesPage.jsx";
 import { AdminPlaceholderPage } from "../pages/AdminPlaceholderPage.jsx";
+import { DiseasesPage } from "../modules/diseases/DiseasesPage.jsx";
+import { MedicalHistoryPage } from "../modules/medical-history/MedicalHistoryPage.jsx";
+import { NotificationsPage } from "../modules/notifications/NotificationsPage.jsx";
+import { ReceptionPage } from "../modules/reception/ReceptionPage.jsx";
 
 // ── Người dùng portal ──────────────────────────────
 import { UserPortalPage } from "../modules/user-portal/UserPortalPage.jsx";
@@ -51,10 +56,36 @@ export const appRouter = createBrowserRouter([
           { path: "/accounts", element: <AccountsPage /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/specialties", element: <SpecialtiesPage /> },
-          { path: "/diseases", element: <AdminPlaceholderPage title="Danh Mục Bệnh" /> },
+          { path: "/diseases", element: <DiseasesPage /> },
+          { path: "/admin/diseases", element: <DiseasesPage /> },
           { path: "/drug-suggestions", element: <AdminPlaceholderPage title="Gợi Ý Thuốc" /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/statistics", element: <StatisticsPage /> },
+        ],
+      },
+    ],
+  },
+
+  {
+    element: <ProtectedRoute roles={roles.clinical} />,
+    children: [
+      {
+        element: <RoleBasedLayout />,
+        children: [
+          { path: "/medical-history", element: <MedicalHistoryPage /> },
+          { path: "/reception", element: <ReceptionPage /> },
+        ],
+      },
+    ],
+  },
+
+  {
+    element: <ProtectedRoute roles={roles.all} />,
+    children: [
+      {
+        element: <RoleBasedLayout />,
+        children: [
+          { path: "/notifications", element: <NotificationsPage /> },
         ],
       },
     ],
@@ -95,7 +126,7 @@ export const appRouter = createBrowserRouter([
           { path: "/my-appointments", element: <UserPortalPage /> },
           { path: "/my-invoices", element: <UserPortalPage /> },
           { path: "/my-prescriptions", element: <UserPortalPage /> },
-          { path: "/my-records", element: <UserPortalPage /> },
+          { path: "/my-records", element: <MedicalHistoryPage /> },
         ],
       },
     ],

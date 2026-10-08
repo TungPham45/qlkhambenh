@@ -3,8 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Logger,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Appointment } from '@app/database';
@@ -13,6 +15,8 @@ import {
   UpdateAppointmentStatusDto,
   AppointmentStatus,
   UserRole,
+  EVENTS,
+  REDIS_SERVICES,
   RedisLockService,
 } from '@app/common';
 
@@ -24,6 +28,8 @@ export class AppointmentServiceService {
     @InjectRepository(Appointment)
     private readonly apptRepo: Repository<Appointment>,
     private readonly redisLock: RedisLockService,
+    @Inject(REDIS_SERVICES.AUTH_SERVICE)
+    private readonly eventClient: ClientProxy,
   ) {}
 
   async getAll(query: any, user: any) {
@@ -114,6 +120,14 @@ export class AppointmentServiceService {
 
       const saved = await this.apptRepo.save(appt);
       this.logger.log(`Created appointment #${saved.id} for Doctor #${dto.doctorId} on ${dto.appointmentDate} ${normTime}`);
+      this.eventClient.emit(EVENTS.APPOINTMENT_CREATED, {
+        appointmentId: Number(saved.id),
+        patientId: Number(saved.patientId),
+        doctorId: Number(saved.doctorId),
+        appointmentDate: saved.appointmentDate,
+        appointmentTime: saved.appointmentTime,
+        status: saved.status,
+      });
       return this.formatAppointment(saved);
     } finally {
       if (lockId) {
@@ -141,10 +155,14 @@ export class AppointmentServiceService {
       appt.appointmentTime = time;
     }
 
+    const previousStatus = appt.status;
     if (dto.status) appt.status = dto.status;
     if (dto.notes !== undefined) appt.notes = dto.notes;
 
     const saved = await this.apptRepo.save(appt);
+    if (dto.status && saved.status !== previousStatus) {
+      this.emitStatusChanged(saved);
+    }
     return this.formatAppointment(saved);
   }
 
@@ -162,8 +180,12 @@ export class AppointmentServiceService {
       }
     }
 
+    const previousStatus = appt.status;
     appt.status = dto.status;
     const saved = await this.apptRepo.save(appt);
+    if (saved.status !== previousStatus) {
+      this.emitStatusChanged(saved);
+    }
     return this.formatAppointment(saved);
   }
 
@@ -172,8 +194,12 @@ export class AppointmentServiceService {
     if (!appt) throw new NotFoundException('Không tìm thấy lịch khám');
 
     if (user?.role === UserRole.NGUOI_DUNG) {
+      const previousStatus = appt.status;
       appt.status = AppointmentStatus.HUY;
-      await this.apptRepo.save(appt);
+      const saved = await this.apptRepo.save(appt);
+      if (saved.status !== previousStatus) {
+        this.emitStatusChanged(saved);
+      }
       return { success: true, message: 'Đã hủy lịch khám' };
     }
 
@@ -220,6 +246,17 @@ export class AppointmentServiceService {
   private normalizeTime(t: string): string {
     const trimmed = (t || '08:00').trim();
     return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
+  }
+
+  private emitStatusChanged(appointment: Appointment) {
+    this.eventClient.emit(EVENTS.APPOINTMENT_STATUS_CHANGED, {
+      appointmentId: Number(appointment.id),
+      patientId: Number(appointment.patientId),
+      doctorId: Number(appointment.doctorId),
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+      status: appointment.status,
+    });
   }
 
   private formatAppointment(a: Appointment) {

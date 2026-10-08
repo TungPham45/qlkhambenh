@@ -28,6 +28,19 @@ export const endpoints = {
   medicalRecords:
     "/medical-records",
 
+  medicalHistory:
+    "/medical-records/history",
+
+  diseases: "/diseases",
+
+  reception: "/reception",
+
+  notifications: {
+    list: "/notifications",
+    unreadCount: "/notifications/unread-count",
+    readAll: "/notifications/read-all",
+  },
+
   staffs: "/admin/staff",
 
   accounts: "/accounts",

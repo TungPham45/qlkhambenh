@@ -28,6 +28,18 @@ export class PrescriptionItem {
   @Column({ name: 'lieu_dung', length: 255, nullable: true })
   dosage: string;
 
+  @Column({ name: 'tan_suat', length: 100, nullable: true })
+  frequency: string | null;
+
+  @Column({ name: 'so_ngay_dung', type: 'int', nullable: true })
+  durationDays: number | null;
+
+  @Column({ name: 'duong_dung', length: 100, nullable: true })
+  route: string | null;
+
+  @Column({ name: 'huong_dan', type: 'text', nullable: true })
+  instructions: string | null;
+
   @Column({
     name: 'don_gia_tai_thoi_diem_ke',
     type: 'numeric',

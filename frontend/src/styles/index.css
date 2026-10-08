@@ -45,3 +45,41 @@ textarea {
   background: rgba(59, 130, 246, 0.1);
   color: #2563eb;
 }
+
+.notification-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  z-index: 80;
+  width: min(390px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 16px;
+  background: var(--surface-strong, #fff);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
+.notification-panel-admin {
+  color: #20262d;
+  border-color: #dfe6eb;
+  background: #fff;
+}
+
+.notification-admin-button {
+  position: relative;
+  display: inline-grid;
+  width: 39px;
+  height: 39px;
+  place-items: center;
+  border: 1px solid #dfe6eb;
+  border-radius: 50%;
+  background: #fff;
+  color: #526171;
+  cursor: pointer;
+}
+
+.notification-admin-button:hover {
+  border-color: #9cb9dc;
+  color: #1f5ca9;
+  background: #f5f9ff;
+}

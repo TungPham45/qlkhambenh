@@ -5,6 +5,8 @@ import { DatabaseModule } from '@app/database';
 import { REDIS_SERVICES } from '@app/common';
 import { AuthServiceController } from './auth-service.controller';
 import { AuthServiceService } from './auth-service.service';
+import { NotificationsController } from './notifications.controller';
+import { NotificationsService } from './notifications.service';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { AuthServiceService } from './auth-service.service';
       },
     ]),
   ],
-  controllers: [AuthServiceController],
-  providers: [AuthServiceService],
+  controllers: [AuthServiceController, NotificationsController],
+  providers: [AuthServiceService, NotificationsService],
 })
 export class AuthServiceModule {}

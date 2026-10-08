@@ -125,6 +125,14 @@ export class BillingServiceService {
     const saved = await this.invoiceRepo.save(invoice);
     this.logger.log(`Created Invoice #${saved.id} for Record #${saved.medicalRecordId}`);
 
+    this.analyticsClient.emit(EVENTS.BILLING_INVOICE_CREATED, {
+      invoiceId: saved.id,
+      recordId: Number(saved.medicalRecordId),
+      patientId: Number(saved.patientId),
+      totalAmount: Number(saved.totalAmount),
+      paymentStatus: saved.paymentStatus,
+    });
+
     // If created directly as Paid, emit event
     if (saved.paymentStatus === BillingStatus.DA_THANH_TOAN) {
       this.emitPaidEvents(saved);

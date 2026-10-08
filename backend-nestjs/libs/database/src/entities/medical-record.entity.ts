@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
@@ -13,6 +14,7 @@ import { Patient } from './patient.entity';
 import { Staff } from './staff.entity';
 import { Prescription } from './prescription.entity';
 import { Invoice } from './invoice.entity';
+import { Diagnosis } from './diagnosis.entity';
 
 @Entity('phieu_kham')
 export class MedicalRecord {
@@ -40,6 +42,15 @@ export class MedicalRecord {
   @Column({ name: 'ket_luan', type: 'text', nullable: true })
   conclusion: string;
 
+  @Column({ name: 'huong_dieu_tri', type: 'text', nullable: true })
+  treatmentDirection: string | null;
+
+  @Column({ name: 'ghi_chu_bac_si', type: 'text', nullable: true })
+  doctorNotes: string | null;
+
+  @Column({ name: 'ngay_tai_kham', type: 'date', nullable: true })
+  followUpDate: string | null;
+
   @Column({
     name: 'phi_kham',
     type: 'numeric',
@@ -66,6 +77,9 @@ export class MedicalRecord {
 
   @OneToOne(() => Invoice, (inv) => inv.medicalRecord)
   invoice?: Invoice;
+
+  @OneToMany(() => Diagnosis, (diagnosis) => diagnosis.medicalRecord)
+  diagnoses?: Diagnosis[];
 
   @CreateDateColumn({ name: 'ngay_tao', type: 'timestamptz' })
   createdAt: Date;
