@@ -1,12 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Account, Appointment, Patient } from '@app/database';
+import { Account, Patient } from '@app/database';
 import { AccountStatus, CreatePatientDto, UpdatePatientDto, UserRole } from '@app/common';
 import * as bcrypt from 'bcryptjs';
 
@@ -27,8 +22,10 @@ export class PatientServiceService {
     const status = query?.status || '';
 
     // Scope for NguoiDung
-    if (user?.role === UserRole.NGUOI_DUNG && user?.patientId) {
-      const patient = await this.patientRepo.findOne({ where: { id: user.patientId } });
+    if (user?.role === UserRole.NGUOI_DUNG) {
+      const patient = user.id
+        ? await this.patientRepo.findOne({ where: { accountId: user.id } })
+        : null;
       return {
         data: patient ? [this.formatPatient(patient)] : [],
         pagination: { total: patient ? 1 : 0, page: 1, limit, total_pages: 1 },
@@ -40,22 +37,6 @@ export class PatientServiceService {
       .orderBy('patient.id', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
-    if (user?.role === UserRole.BAC_SI) {
-      const doctorId = Number(user.staffId ?? user.MaNV);
-      if (!Number.isInteger(doctorId) || doctorId <= 0) {
-        throw new ForbiddenException('Tài khoản chưa được liên kết với bác sĩ');
-      }
-      builder
-        .innerJoin(
-          Appointment,
-          'assignedAppointment',
-          'assignedAppointment.patientId = patient.id AND assignedAppointment.doctorId = :doctorId',
-          { doctorId },
-        )
-        .distinct(true);
-    } else if (user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Bạn không có quyền xem danh sách bệnh nhân');
-    }
     if (search) {
       const rawPatientId = search.replace(/^BN-/i, '');
       const exactPatientId = /^\d+$/.test(rawPatientId) ? String(Number(rawPatientId)) : rawPatientId;
@@ -79,32 +60,8 @@ export class PatientServiceService {
     };
   }
 
-  async getById(id: number, user: any) {
-    const builder = this.patientRepo
-      .createQueryBuilder('patient')
-      .leftJoinAndSelect('patient.account', 'account')
-      .where('patient.id = :id', { id });
-
-    if (user?.role === UserRole.BAC_SI) {
-      const doctorId = Number(user.staffId ?? user.MaNV);
-      if (!Number.isInteger(doctorId) || doctorId <= 0) {
-        throw new ForbiddenException('Tài khoản chưa được liên kết với bác sĩ');
-      }
-      builder.innerJoin(
-        Appointment,
-        'assignedAppointment',
-        'assignedAppointment.patientId = patient.id AND assignedAppointment.doctorId = :doctorId',
-        { doctorId },
-      );
-    } else if (user?.role === UserRole.NGUOI_DUNG) {
-      builder.andWhere('patient.id = :scopePatientId', {
-        scopePatientId: Number(user.patientId),
-      });
-    } else if (user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Bạn không có quyền xem bệnh nhân này');
-    }
-
-    const patient = await builder.getOne();
+  async getById(id: number) {
+    const patient = await this.patientRepo.findOne({ where: { id }, relations: ['account'] });
     if (!patient) throw new NotFoundException('Không tìm thấy bệnh nhân');
     return this.formatPatient(patient);
   }

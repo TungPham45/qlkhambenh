@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -22,7 +23,11 @@ import {
   UpdateStaffDto,
   CreateSpecialtyDto,
   UpdateSpecialtyDto,
+  Roles,
+  UserRole,
 } from '@app/common';
+import { RolesGuard } from '../guards/roles.guard';
+import { WorkScheduleDto } from './work-schedule.dto';
 
 @ApiTags('Staff & Doctors')
 @ApiBearerAuth()
@@ -32,6 +37,54 @@ export class StaffController {
     @Inject(REDIS_SERVICES.STAFF_SERVICE)
     private readonly staffClient: ClientProxy,
   ) {}
+
+  @Get('work-schedules')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin tìm kiếm lịch làm việc của bác sĩ' })
+  async getWorkSchedules(@Query() query: any) {
+    try {
+      return await firstValueFrom(this.staffClient.send('work_schedules.get_all', query));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+
+  @Post('work-schedules')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin thêm lịch làm việc của bác sĩ' })
+  async createWorkSchedule(@Body() dto: WorkScheduleDto) {
+    try {
+      return await firstValueFrom(this.staffClient.send('work_schedules.create', dto));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+
+  @Put('work-schedules/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin sửa lịch làm việc của bác sĩ' })
+  async updateWorkSchedule(@Param('id', ParseIntPipe) id: number, @Body() dto: WorkScheduleDto) {
+    try {
+      return await firstValueFrom(this.staffClient.send('work_schedules.update', { id, dto }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
+
+  @Delete('work-schedules/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin xóa lịch làm việc của bác sĩ' })
+  async deleteWorkSchedule(@Param('id', ParseIntPipe) id: number) {
+    try {
+      return await firstValueFrom(this.staffClient.send('work_schedules.delete', { id }));
+    } catch (error) {
+      throw toHttpException(error);
+    }
+  }
 
   @Get('staff')
   @ApiOperation({ summary: 'Lấy danh sách nhân viên' })
@@ -52,6 +105,8 @@ export class StaffController {
   }
 
   @Post('admin/staff')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Tạo hồ sơ nhân viên mới' })
   async createAdminStaff(@Body() dto: CreateStaffDto) {
     try {
@@ -62,6 +117,8 @@ export class StaffController {
   }
 
   @Post('staff')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Tạo hồ sơ nhân viên mới' })
   async createStaff(@Body() dto: CreateStaffDto) {
     try {
@@ -72,6 +129,8 @@ export class StaffController {
   }
 
   @Put('staff/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Cập nhật thông tin nhân viên' })
   async updateStaff(
     @Param('id', ParseIntPipe) id: number,
@@ -85,6 +144,8 @@ export class StaffController {
   }
 
   @Delete('staff/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Xóa nhân viên' })
   async deleteStaff(@Param('id', ParseIntPipe) id: number) {
     try {

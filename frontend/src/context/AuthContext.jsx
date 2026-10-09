@@ -97,9 +97,7 @@ export function AuthProvider({ children }) {
           );
 
         const verifiedUser = response?.user || response?.data?.user || response?.data || null;
-        const authenticatedUser = verifiedUser
-          ? { ...(getStoredUser() || {}), ...verifiedUser }
-          : null;
+        const authenticatedUser = verifiedUser;
 
         if (!authenticatedUser) {
           throw new Error(

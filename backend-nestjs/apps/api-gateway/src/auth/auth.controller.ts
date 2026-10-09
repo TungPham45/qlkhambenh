@@ -1,104 +1,91 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  Inject,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Param, Query, Inject, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import {
-  REDIS_SERVICES,
-  MSG,
-  Public,
-  Roles,
-  CurrentUser,
-  UserRole,
-  LoginDto,
-  RegisterDto,
-  CreateAccountDto,
-  UpdateAccountDto,
-  UpdateProfileDto,
-} from '@app/common';
+import { REDIS_SERVICES, MSG, Public, Roles, CurrentUser, UserRole, LoginDto, RegisterDto, CreateAccountDto, UpdateAccountDto } from '@app/common';
 import { RolesGuard } from '../guards/roles.guard';
+import { ProfileDto } from './profile.dto';
 
 @ApiTags('Authentication & Accounts')
 @Controller('api')
 export class AuthController {
-  constructor(
-    @Inject(REDIS_SERVICES.AUTH_SERVICE)
-    private readonly authClient: ClientProxy,
-  ) {}
+  constructor(@Inject(REDIS_SERVICES.AUTH_SERVICE) private readonly authClient: ClientProxy) {}
 
   @Public()
   @Post('auth/login')
   @ApiOperation({ summary: 'Đăng nhập người dùng' })
-  async login(@Body() dto: LoginDto) {
-    return await firstValueFrom(this.authClient.send(MSG.AUTH_LOGIN, dto));
-  }
+  login(@Body() dto: LoginDto) { return this.request(MSG.AUTH_LOGIN, dto); }
 
   @Public()
   @Post('auth/register')
   @ApiOperation({ summary: 'Đăng ký tài khoản người dùng / bệnh nhân mới' })
-  async register(@Body() dto: RegisterDto) {
-    return await firstValueFrom(this.authClient.send(MSG.AUTH_REGISTER, dto));
-  }
+  register(@Body() dto: RegisterDto) { return this.request(MSG.AUTH_REGISTER, dto); }
 
   @ApiBearerAuth()
   @Get('auth/me')
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản hiện tại' })
-  async me(@CurrentUser() user: any) {
-    return { user };
+  @ApiOperation({ summary: 'Lấy thông tin tài khoản hiện tại từ cơ sở dữ liệu' })
+  me(@CurrentUser() user: any) { return { user }; }
+
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.NGUOI_DUNG)
+  @Get('auth/profile')
+  @ApiOperation({ summary: 'Lấy thông tin cá nhân của bệnh nhân đang đăng nhập' })
+  getProfile(@CurrentUser() user: any) {
+    return this.request('auth.get_profile', { accountId: user.id });
   }
 
   @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.NGUOI_DUNG)
+  @Post('auth/profile')
+  @ApiOperation({ summary: 'Thêm thông tin cá nhân khi bệnh nhân chưa có hồ sơ' })
+  createProfile(@CurrentUser() user: any, @Body() dto: ProfileDto) {
+    return this.request('auth.create_profile', { accountId: user.id, dto });
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.NGUOI_DUNG, UserRole.BAC_SI)
   @Put('auth/profile')
   @ApiOperation({ summary: 'Cập nhật hồ sơ người dùng hiện tại' })
-  async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
-    return await firstValueFrom(
-      this.authClient.send(MSG.AUTH_UPDATE_PROFILE, { accountId: user.id, dto }),
-    );
+  updateProfile(@CurrentUser() user: any, @Body() dto: ProfileDto) {
+    return this.request(MSG.AUTH_UPDATE_PROFILE, { accountId: user.id, dto });
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.NGUOI_DUNG)
+  @Delete('auth/profile')
+  @ApiOperation({ summary: 'Xóa thông tin cá nhân chưa có dữ liệu khám bệnh liên quan' })
+  deleteProfile(@CurrentUser() user: any) {
+    return this.request('auth.delete_profile', { accountId: user.id });
   }
 
   @Public()
   @Post('auth/refresh')
   @ApiOperation({ summary: 'Làm mới token' })
-  async refresh() {
-    return { message: 'Token is valid' };
-  }
+  refresh() { return { message: 'Token is valid' }; }
 
   @Public()
   @Post('auth/logout')
   @ApiOperation({ summary: 'Đăng xuất' })
-  async logout() {
-    return { success: true, message: 'Đã đăng xuất' };
-  }
+  logout() { return { success: true, message: 'Đã đăng xuất' }; }
 
-  // --- ACCOUNTS CRUD (Admin) ---
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get('accounts')
-  @ApiOperation({ summary: 'Lấy danh sách tất cả tài khoản (Admin)' })
-  async getAccounts(@Query() query: any) {
-    return await firstValueFrom(this.authClient.send(MSG.AUTH_GET_ACCOUNTS, query));
-  }
+  @ApiOperation({ summary: 'Tìm kiếm tất cả tài khoản (Admin)' })
+  getAccounts(@Query() query: any) { return this.request(MSG.AUTH_GET_ACCOUNTS, query); }
 
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get('accounts/:username')
-  @ApiOperation({ summary: 'Lấy chi tiết tài khoản theo username' })
-  async getAccount(@Param('username') username: string) {
-    return await firstValueFrom(
-      this.authClient.send(MSG.AUTH_GET_ACCOUNT_BY_USER, { username }),
-    );
+  @ApiOperation({ summary: 'Lấy chi tiết tài khoản theo username (Admin)' })
+  getAccount(@Param('username') username: string) {
+    return this.request(MSG.AUTH_GET_ACCOUNT_BY_USER, { username });
   }
 
   @ApiBearerAuth()
@@ -106,22 +93,15 @@ export class AuthController {
   @Roles(UserRole.ADMIN)
   @Post('accounts')
   @ApiOperation({ summary: 'Tạo tài khoản mới (Admin)' })
-  async createAccount(@Body() dto: CreateAccountDto) {
-    return await firstValueFrom(this.authClient.send(MSG.AUTH_CREATE_ACCOUNT, dto));
-  }
+  createAccount(@Body() dto: CreateAccountDto) { return this.request(MSG.AUTH_CREATE_ACCOUNT, dto); }
 
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @Put('accounts/:username')
   @ApiOperation({ summary: 'Cập nhật tài khoản (Admin)' })
-  async updateAccount(
-    @Param('username') username: string,
-    @Body() dto: UpdateAccountDto,
-  ) {
-    return await firstValueFrom(
-      this.authClient.send(MSG.AUTH_UPDATE_ACCOUNT, { username, dto }),
-    );
+  updateAccount(@Param('username') username: string, @Body() dto: UpdateAccountDto, @CurrentUser() user: any) {
+    return this.request(MSG.AUTH_UPDATE_ACCOUNT, { username, dto, actorId: user.id });
   }
 
   @ApiBearerAuth()
@@ -129,9 +109,18 @@ export class AuthController {
   @Roles(UserRole.ADMIN)
   @Delete('accounts/:username')
   @ApiOperation({ summary: 'Xóa tài khoản (Admin)' })
-  async deleteAccount(@Param('username') username: string) {
-    return await firstValueFrom(
-      this.authClient.send(MSG.AUTH_DELETE_ACCOUNT, { username }),
-    );
+  deleteAccount(@Param('username') username: string, @CurrentUser() user: any) {
+    return this.request(MSG.AUTH_DELETE_ACCOUNT, { username, actorId: user.id });
+  }
+
+  private async request(pattern: string | { cmd: string }, payload: any) {
+    try { return await firstValueFrom(this.authClient.send(pattern, payload).pipe(timeout(10000))); }
+    catch (error) {
+      const candidateStatus = Number(error?.statusCode || error?.status || error?.error?.statusCode);
+      const status = Number.isInteger(candidateStatus) && candidateStatus >= 400 && candidateStatus <= 599
+        ? candidateStatus : HttpStatus.SERVICE_UNAVAILABLE;
+      const message = error?.message || error?.error?.message || 'Dịch vụ tài khoản tạm thời không khả dụng';
+      throw new HttpException(message, status);
+    }
   }
 }

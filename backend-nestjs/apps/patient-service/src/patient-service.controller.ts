@@ -9,20 +9,12 @@ export class PatientServiceController {
 
   @MessagePattern(MSG.PATIENT_GET_ALL)
   async getAll(@Payload() data: { query: any; user: any }) {
-    try {
-      return await this.patientService.getAll(data.query, data.user);
-    } catch (error) {
-      throw toRpcException(error);
-    }
+    return await this.patientService.getAll(data.query, data.user);
   }
 
   @MessagePattern(MSG.PATIENT_GET_BY_ID)
-  async getById(@Payload() data: { id: number; user: any }) {
-    try {
-      return await this.patientService.getById(data.id, data.user);
-    } catch (error) {
-      throw toRpcException(error);
-    }
+  async getById(@Payload() data: { id: number }) {
+    return await this.patientService.getById(data.id);
   }
 
   @MessagePattern(MSG.PATIENT_CREATE)

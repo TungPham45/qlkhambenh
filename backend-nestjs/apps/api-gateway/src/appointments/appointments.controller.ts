@@ -41,23 +41,16 @@ export class AppointmentsController {
 
   @Get('doctor/:id/patients')
   @ApiOperation({ summary: 'Lấy danh sách bệnh nhân theo bác sĩ' })
-  async getByDoctor(
-    @Param('id', ParseIntPipe) doctorId: number,
-    @Query() query: any,
-    @CurrentUser() user: any,
-  ) {
+  async getByDoctor(@Param('id', ParseIntPipe) doctorId: number, @Query() query: any) {
     return await firstValueFrom(
-      this.apptClient.send(MSG.APPT_GET_BY_DOCTOR, { doctorId, query, user }),
+      this.apptClient.send(MSG.APPT_GET_BY_DOCTOR, { doctorId, query }),
     );
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Lấy chi tiết lịch khám' })
-  async getById(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: any,
-  ) {
-    return await firstValueFrom(this.apptClient.send(MSG.APPT_GET_BY_ID, { id, user }));
+  async getById(@Param('id', ParseIntPipe) id: number) {
+    return await firstValueFrom(this.apptClient.send(MSG.APPT_GET_BY_ID, { id }));
   }
 
   @Post()

@@ -105,9 +105,7 @@ export const resourceConfigs = {
   records: {
     title: "Phiếu khám",
     endpoint: "/medical-records",
-    workflow: "medicalRecord",
     pk: "MaPhieu",
-    searchPlaceholder: "Tìm theo mã phiếu, mã bệnh nhân, họ tên, số điện thoại hoặc chẩn đoán",
     lookups: ["appointments"],
     columns: [
       { key: "MaPhieu", header: "Mã phiếu" },
@@ -123,17 +121,7 @@ export const resourceConfigs = {
       { name: "ChanDoan", label: "Chẩn đoán", type: "textarea" },
       { name: "KetLuan", label: "Kết luận", type: "textarea" }
     ],
-    canDelete: false,
-    toApiPayload: (payload) => ({
-      MaPhieu: payload.MaPhieu,
-      appointmentId: Number(payload.MaLich),
-      patientId: Number(payload.MaBN),
-      doctorId: Number(payload.MaBacSi),
-      examinationDate: payload.NgayKham || undefined,
-      symptoms: payload.TrieuChung || undefined,
-      diagnosis: payload.ChanDoan || undefined,
-      conclusion: payload.KetLuan || undefined,
-    })
+    canDelete: false
   },
   billings: {
     title: "Hóa đơn",
@@ -169,7 +157,6 @@ export const resourceConfigs = {
     title: "Thuốc",
     endpoint: "/drugs",
     pk: "MaThuoc",
-    searchPlaceholder: "Tìm theo mã hoặc tên thuốc",
     columns: [
       { key: "MaThuoc", header: "Mã thuốc" },
       { key: "TenThuoc", header: "Tên thuốc" },
@@ -184,15 +171,7 @@ export const resourceConfigs = {
       { name: "DonGia", label: "Đơn giá", type: "number", step: "0.01", required: true },
       { name: "SoLuongTon", label: "Tồn kho", type: "number", step: "1", required: true },
       { name: "NgayHetHan", label: "Ngày hết hạn", type: "date" }
-    ],
-    toApiPayload: (payload) => ({
-      MaThuoc: payload.MaThuoc,
-      drugName: payload.TenThuoc,
-      unit: payload.DonViTinh,
-      unitPrice: Number(payload.DonGia),
-      stockQuantity: Number(payload.SoLuongTon),
-      expiryDate: payload.NgayHetHan || undefined,
-    })
+    ]
   },
   prescriptions: {
     title: "Đơn thuốc",
@@ -213,19 +192,7 @@ export const resourceConfigs = {
     ],
     customForm: "prescription",
     canEdit: false,
-    canDelete: false,
-    toApiPayload: (payload) => ({
-      medicalRecordId: Number(payload.MaPhieu),
-      patientId: Number(payload.MaBN),
-      doctorId: Number(payload.MaBacSi),
-      prescriptionDate: payload.NgayKeDon || undefined,
-      note: payload.GhiChu || undefined,
-      items: (payload.ChiTiet || []).map((item) => ({
-        drugId: Number(item.MaThuoc),
-        quantity: Number(item.SoLuong),
-        dosage: item.LieuDung,
-      })),
-    })
+    canDelete: false
   },
   accounts: {
     title: "Tài khoản",

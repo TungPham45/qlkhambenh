@@ -1,11 +1,51 @@
 import { Controller, HttpException, HttpStatus } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { StaffServiceService } from './staff-service.service';
+import { WorkSchedulesService } from './work-schedules.service';
 import { MSG, CreateSpecialtyDto, CreateStaffDto, UpdateSpecialtyDto, UpdateStaffDto } from '@app/common';
 
 @Controller()
 export class StaffServiceController {
-  constructor(private readonly staffService: StaffServiceService) {}
+  constructor(
+    private readonly staffService: StaffServiceService,
+    private readonly workSchedules: WorkSchedulesService,
+  ) {}
+
+  @MessagePattern('work_schedules.get_all')
+  async getWorkSchedules(@Payload() query: any) {
+    try {
+      return await this.workSchedules.getAll(query);
+    } catch (error) {
+      throw toRpcException(error);
+    }
+  }
+
+  @MessagePattern('work_schedules.create')
+  async createWorkSchedule(@Payload() dto: any) {
+    try {
+      return await this.workSchedules.create(dto);
+    } catch (error) {
+      throw toRpcException(error);
+    }
+  }
+
+  @MessagePattern('work_schedules.update')
+  async updateWorkSchedule(@Payload() data: { id: number; dto: any }) {
+    try {
+      return await this.workSchedules.update(data.id, data.dto);
+    } catch (error) {
+      throw toRpcException(error);
+    }
+  }
+
+  @MessagePattern('work_schedules.delete')
+  async deleteWorkSchedule(@Payload() data: { id: number }) {
+    try {
+      return await this.workSchedules.delete(data.id);
+    } catch (error) {
+      throw toRpcException(error);
+    }
+  }
 
   @MessagePattern(MSG.STAFF_GET_ALL)
   async getAll(@Payload() query: any) {

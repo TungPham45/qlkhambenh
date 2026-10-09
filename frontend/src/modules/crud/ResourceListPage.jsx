@@ -1,4 +1,4 @@
-import { Edit3, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { Edit3, Eye, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Modal } from "../../components/common/Modal.jsx";
 import { DataTable } from "../../components/table/DataTable.jsx";
@@ -16,7 +16,6 @@ export function ResourceListPage({ config }) {
   const [modal, setModal] = useState({ open: false, mode: "create", row: null });
   const [detail, setDetail] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
 
   const columns = useMemo(() => [
     ...config.columns.map((column) => ({
@@ -90,11 +89,6 @@ export function ResourceListPage({ config }) {
     }
   }
 
-  function handleSearch(event) {
-    event.preventDefault();
-    load({ ...query, page: 1, search: search.trim() });
-  }
-
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -110,22 +104,6 @@ export function ResourceListPage({ config }) {
       </div>
 
       {error ? <div className="rounded-md bg-rose-50 px-4 py-3 text-sm text-rose-700">{error.message}</div> : null}
-
-      {config.searchPlaceholder ? (
-        <form className="flex flex-wrap gap-2" onSubmit={handleSearch}>
-          <label className="admin-search min-w-[280px] flex-1">
-            <Search size={18} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={config.searchPlaceholder}
-            />
-          </label>
-          <button className="btn-secondary" type="submit">
-            <Search className="h-4 w-4" /> Tìm kiếm
-          </button>
-        </form>
-      ) : null}
 
       <section className="app-card">
         <DataTable columns={columns} rows={rows} rowKey={config.pk} loading={loading} />

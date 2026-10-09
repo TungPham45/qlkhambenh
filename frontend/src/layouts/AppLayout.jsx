@@ -4,6 +4,7 @@ import { useMemo, useState,} from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { NotificationBell } from "../modules/notifications/NotificationBell.jsx";
+import { PatientAvatarMenu } from "../components/public/PatientAvatarMenu.jsx";
 const ROLE_MENUS = {
   admin: [
     {
@@ -248,7 +249,7 @@ export function AppLayout() {
 
           <div className="topbar-title">
             <strong>
-              {user?.TenDangNhap ||
+              {user?.HoTen || user?.fullName || user?.username || user?.TenDangNhap ||
                 "Người dùng"}
             </strong>
 
@@ -274,7 +275,7 @@ export function AppLayout() {
               )}
             </button>
 
-            <button
+            {userRole === "nguoidung" ? <PatientAvatarMenu /> : <button
               className="btn-secondary"
               type="button"
               onClick={logout}
@@ -282,7 +283,7 @@ export function AppLayout() {
               <LogOut className="h-4 w-4" />
 
               Đăng xuất
-            </button>
+            </button>}
           </div>
         </header>
 

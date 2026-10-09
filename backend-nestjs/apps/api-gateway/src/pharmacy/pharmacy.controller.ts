@@ -9,7 +9,6 @@ import {
   Query,
   Inject,
   ParseIntPipe,
-  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -21,10 +20,7 @@ import {
   CreateDrugDto,
   UpdateDrugDto,
   CreatePrescriptionDto,
-  Roles,
-  UserRole,
 } from '@app/common';
-import { RolesGuard } from '../guards/roles.guard';
 
 @ApiTags('Pharmacy & Prescriptions')
 @ApiBearerAuth()
@@ -37,16 +33,12 @@ export class PharmacyController {
 
   // --- DRUGS ---
   @Get('drugs')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy danh mục thuốc' })
   async getDrugs(@Query() query: any) {
     return await firstValueFrom(this.pharmacyClient.send(MSG.DRUG_GET_ALL, query));
   }
 
   @Get('drugs/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy chi tiết thuốc theo ID' })
   async getDrugById(@Param('id', ParseIntPipe) id: number) {
     return await firstValueFrom(
@@ -55,16 +47,12 @@ export class PharmacyController {
   }
 
   @Post('drugs')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Thêm thuốc mới vào kho' })
   async createDrug(@Body() dto: CreateDrugDto) {
     return await firstValueFrom(this.pharmacyClient.send(MSG.DRUG_CREATE, dto));
   }
 
   @Put('drugs/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Cập nhật thông tin thuốc' })
   async updateDrug(
     @Param('id', ParseIntPipe) id: number,
@@ -76,8 +64,6 @@ export class PharmacyController {
   }
 
   @Delete('drugs/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Xóa thuốc khỏi danh mục' })
   async deleteDrug(@Param('id', ParseIntPipe) id: number) {
     return await firstValueFrom(
@@ -87,8 +73,6 @@ export class PharmacyController {
 
   // --- PRESCRIPTIONS ---
   @Get('prescriptions')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy danh sách đơn thuốc' })
   async getPrescriptions(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -97,21 +81,14 @@ export class PharmacyController {
   }
 
   @Get('prescriptions/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy chi tiết đơn thuốc' })
-  async getPrescriptionById(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: any,
-  ) {
+  async getPrescriptionById(@Param('id', ParseIntPipe) id: number) {
     return await firstValueFrom(
-      this.pharmacyClient.send(MSG.PRESCRIPTION_GET_BY_ID, { id, user }),
+      this.pharmacyClient.send(MSG.PRESCRIPTION_GET_BY_ID, { id }),
     );
   }
 
   @Post('prescriptions')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Kê đơn thuốc cho bệnh nhân' })
   async createPrescription(
     @Body() dto: CreatePrescriptionDto,
@@ -123,8 +100,6 @@ export class PharmacyController {
   }
 
   @Post('prescriptions/:id/deduct-stock')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Trừ kho thuốc theo đơn' })
   async deductStock(@Param('id', ParseIntPipe) id: number) {
     return await firstValueFrom(

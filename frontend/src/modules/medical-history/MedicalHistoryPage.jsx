@@ -1,6 +1,5 @@
 import { Eye, RotateCcw, Search, Stethoscope } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 
 import { DataTable } from "../../components/table/DataTable.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -33,7 +32,6 @@ function paymentStatusLabel(status) {
 }
 
 export function MedicalHistoryPage() {
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { notify } = useToast();
   const role = String(user?.VaiTro || user?.role || "").toLowerCase();
@@ -41,13 +39,8 @@ export function MedicalHistoryPage() {
   const isAdmin = role === "admin";
   const canFilterPatient = isAdmin || role === "bacsi";
 
-  const initialPatientId = searchParams.get("patientId") || "";
-  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, patientId: initialPatientId }));
-  const [activeQuery, setActiveQuery] = useState(() => ({
-    page: 1,
-    limit: 10,
-    ...(initialPatientId ? { patientId: initialPatientId } : {}),
-  }));
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [activeQuery, setActiveQuery] = useState({ page: 1, limit: 10 });
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, total_pages: 0 });
   const [loading, setLoading] = useState(true);

@@ -31,6 +31,8 @@ import { ReceptionPage } from "../modules/reception/ReceptionPage.jsx";
 
 // ── Người dùng portal ──────────────────────────────
 import { UserPortalPage } from "../modules/user-portal/UserPortalPage.jsx";
+import { PatientProfilePage } from "../modules/patient-profile/PatientProfilePage.jsx";
+import { WorkSchedulesPage } from "../modules/work-schedules/WorkSchedulesPage.jsx";
 
 // ── Bác sĩ ─────────────────────────────────────────
 import { DoctorSchedulePage } from "../modules/doctor/DoctorSchedulePage.jsx";
@@ -48,9 +50,13 @@ export const appRouter = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
+          { path: "/patients", element: <PatientsListPage /> },
+          { path: "/pharmacy", element: <PharmacyPage /> },
+          { path: "/medical-records", element: <MedicalRecordsPage /> },
           { path: "/appointments", element: <AppointmentsPage /> },
           { path: "/billing", element: <BillingPage /> },
           { path: "/accounts", element: <AccountsPage /> },
+          { path: "/work-schedules", element: <WorkSchedulesPage /> },
           { path: "/staff", element: <StaffPage /> },
           { path: "/specialties", element: <SpecialtiesPage /> },
           { path: "/diseases", element: <DiseasesPage /> },
@@ -69,9 +75,6 @@ export const appRouter = createBrowserRouter([
       {
         element: <RoleBasedLayout />,
         children: [
-          { path: "/patients", element: <PatientsListPage /> },
-          { path: "/pharmacy", element: <PharmacyPage /> },
-          { path: "/medical-records", element: <MedicalRecordsPage /> },
           { path: "/medical-history", element: <MedicalHistoryPage /> },
           { path: "/reception", element: <ReceptionPage /> },
         ],
@@ -97,6 +100,20 @@ export const appRouter = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
+          { path: "/patients", element: <PatientsListPage /> },
+          { path: "/pharmacy", element: <PharmacyPage /> },
+          { path: "/medical-records", element: <MedicalRecordsPage /> },
+        ],
+      },
+    ],
+  },
+
+  {
+    element: <ProtectedRoute roles={roles.doctor} />,
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
           { path: "/doctor-schedule", element: <DoctorSchedulePage /> },
         ],
       },
@@ -110,6 +127,7 @@ export const appRouter = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: "/my-appointments", element: <UserPortalPage /> },
+          { path: "/my-profile", element: <PatientProfilePage /> },
           { path: "/my-invoices", element: <UserPortalPage /> },
           { path: "/my-prescriptions", element: <UserPortalPage /> },
           { path: "/my-records", element: <MedicalHistoryPage /> },

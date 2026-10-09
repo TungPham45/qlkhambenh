@@ -1,4 +1,4 @@
-import { Download, Edit3, Eye, Plus, Search, Trash2, Users } from "lucide-react";
+import { Download, Edit3, Plus, Search, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Modal } from "../../../components/common/Modal.jsx";
@@ -7,7 +7,6 @@ import { useToast } from "../../../context/ToastContext.jsx";
 import { formatDate } from "../../../utils/formatters.js";
 
 import { PatientForm } from "../components/PatientForm.jsx";
-import { PatientDetailsModal } from "../components/PatientDetailsModal.jsx";
 import { usePatients } from "../hooks/usePatients.js";
 import { AdminPagination } from "../../admin/AdminPagination.jsx";
 
@@ -22,7 +21,6 @@ export function PatientsListPage() {
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState("");
   const [status, setStatus] = useState("");
-  const [detailPatientId, setDetailPatientId] = useState(null);
 
   const role = String(user?.VaiTro || user?.role || "").toLowerCase();
   const canManagePatients = role === "admin";
@@ -99,7 +97,7 @@ export function PatientsListPage() {
 
       <section className="admin-panel">
         <form className="admin-filters" onSubmit={handleSearch}><label className="admin-search"><Search size={18} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm theo mã BN, họ tên, số điện thoại" /></label><select className="admin-filter-select" value={gender} onChange={(event) => setGender(event.target.value)}><option value="">Tất cả giới tính</option><option value="Nam">Nam</option><option value="Nu">Nữ</option></select><select className="admin-filter-select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Tất cả trạng thái</option><option value="Active">Hoạt động</option><option value="Inactive">Ngừng hoạt động</option></select><button className="admin-excel-button" type="submit"><Search size={17} /> Tìm kiếm</button><button className="admin-excel-button" type="button" onClick={exportExcel}><Download size={17} /> Xuất Excel</button>{canManagePatients ? <button className="admin-add-button" type="button" onClick={openCreate}><Plus size={17} /> Thêm mới bệnh nhân</button> : null}</form>
-        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Mã BN</th><th>Họ và tên</th><th>Số điện thoại</th><th>Ngày sinh</th><th>Giới tính</th><th>Địa chỉ</th><th>Trạng thái</th><th /></tr></thead><tbody>{loading ? <tr><td className="admin-empty" colSpan="8">Đang tải dữ liệu...</td></tr> : rows.length ? rows.map((row) => <tr key={row.MaBN}><td><span className="admin-code">BN-{String(row.MaBN).padStart(5, "0")}</span></td><td><span className="admin-name-cell"><strong>{row.HoTen}</strong><small>{row.Email || row.TenDangNhap || "-"}</small></span></td><td>{row.SoDienThoai || "-"}</td><td>{formatDate(row.NgaySinh)}</td><td><span className={`admin-gender ${row.GioiTinh === "Nu" ? "admin-gender-female" : ""}`}>{row.GioiTinh === "Nu" ? "Nữ" : row.GioiTinh}</span></td><td>{row.DiaChi || "-"}</td><td><span className="admin-status">{row.TrangThai === "Inactive" ? "Ngừng hoạt động" : "Hoạt động"}</span></td><td><div className="admin-row-actions"><button className="admin-action" type="button" title="Xem chi tiết" onClick={() => setDetailPatientId(row.MaBN)}><Eye size={16} /></button>{canManagePatients ? <><button className="admin-action" type="button" title="Sửa" onClick={() => openEdit(row)}><Edit3 size={16} /></button><button className="admin-action admin-action-danger" type="button" title="Xóa" onClick={() => handleDelete(row)}><Trash2 size={16} /></button></> : null}</div></td></tr>) : <tr><td className="admin-empty" colSpan="8">Không có bệnh nhân</td></tr>}</tbody></table></div>
+        <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Mã BN</th><th>Họ và tên</th><th>Số điện thoại</th><th>Ngày sinh</th><th>Giới tính</th><th>Địa chỉ</th><th>Trạng thái</th>{canManagePatients ? <th /> : null}</tr></thead><tbody>{loading ? <tr><td className="admin-empty" colSpan="8">Đang tải dữ liệu...</td></tr> : rows.length ? rows.map((row) => <tr key={row.MaBN}><td><span className="admin-code">BN-{String(row.MaBN).padStart(5, "0")}</span></td><td><span className="admin-name-cell"><strong>{row.HoTen}</strong><small>{row.Email || row.TenDangNhap || "-"}</small></span></td><td>{row.SoDienThoai || "-"}</td><td>{formatDate(row.NgaySinh)}</td><td><span className={`admin-gender ${row.GioiTinh === "Nu" ? "admin-gender-female" : ""}`}>{row.GioiTinh === "Nu" ? "Nữ" : row.GioiTinh}</span></td><td>{row.DiaChi || "-"}</td><td><span className="admin-status">{row.TrangThai === "Inactive" ? "Ngừng hoạt động" : "Hoạt động"}</span></td>{canManagePatients ? <td><div className="admin-row-actions"><button className="admin-action" type="button" title="Sửa" onClick={() => openEdit(row)}><Edit3 size={16} /></button><button className="admin-action admin-action-danger" type="button" title="Xóa" onClick={() => handleDelete(row)}><Trash2 size={16} /></button></div></td> : null}</tr>) : <tr><td className="admin-empty" colSpan="8">Không có bệnh nhân</td></tr>}</tbody></table></div>
         {pagination ? <AdminPagination page={query.page} limit={query.limit} total={pagination.total} totalPages={pagination.total_pages} itemLabel="bệnh nhân" onPageChange={(page) => load({ ...query, page })} /> : null}
       </section>
 
@@ -117,11 +115,6 @@ export function PatientsListPage() {
           />
         </Modal>
       ) : null}
-      <PatientDetailsModal
-        patientId={detailPatientId}
-        open={Boolean(detailPatientId)}
-        onClose={() => setDetailPatientId(null)}
-      />
     </div>
   );
 }

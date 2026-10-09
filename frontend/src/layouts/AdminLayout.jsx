@@ -1,10 +1,12 @@
-import { BookOpen, Building2, ChevronDown, ClipboardCheck, History, Hospital, LayoutDashboard, LogOut, Menu, Pill, Sparkles, Stethoscope, Users } from "lucide-react";
+import { BookOpen, Building2, CalendarDays, ChevronDown, ClipboardCheck, History, Hospital, LayoutDashboard, LogOut, Menu, Pill, Sparkles, Stethoscope, UserCog, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { NotificationBell } from "../modules/notifications/NotificationBell.jsx";
 
 const adminMenu = [
+  { to: "/accounts", label: "Quản lý Tài khoản", icon: UserCog },
+  { to: "/work-schedules", label: "Lịch làm việc bác sĩ", icon: CalendarDays },
   { to: "/patients", label: "Quản lý Bệnh nhân", icon: Users },
   { to: "/staff", label: "Quản lý Bác sĩ", icon: Stethoscope },
   { to: "/specialties", label: "Quản lý Chuyên khoa", icon: Building2 },
@@ -16,6 +18,8 @@ const adminMenu = [
 ];
 
 const pageNames = {
+  "/accounts": "Quản lý Tài khoản",
+  "/work-schedules": "Lịch làm việc bác sĩ",
   "/dashboard": "Tổng quan",
   "/patients": "Quản lý Bệnh nhân",
   "/staff": "Quản lý Bác sĩ",

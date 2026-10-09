@@ -12,6 +12,7 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
@@ -20,10 +21,10 @@ import {
   REDIS_SERVICES,
   MSG,
   CurrentUser,
-  CreatePatientDto,
-  UpdatePatientDto,
   Roles,
   UserRole,
+  CreatePatientDto,
+  UpdatePatientDto,
 } from '@app/common';
 import { RolesGuard } from '../guards/roles.guard';
 
@@ -37,8 +38,6 @@ export class PatientsController {
   ) {}
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy danh sách bệnh nhân' })
   async getAll(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -47,8 +46,6 @@ export class PatientsController {
   }
 
   @Get('search')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Tìm kiếm bệnh nhân' })
   async search(@Query() query: any, @CurrentUser() user: any) {
     return await firstValueFrom(
@@ -57,21 +54,19 @@ export class PatientsController {
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.BAC_SI, UserRole.NGUOI_DUNG)
   @ApiOperation({ summary: 'Lấy chi tiết bệnh nhân theo ID' })
-  async getById(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: any,
-  ) {
+  async getById(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+    if (user.role === UserRole.NGUOI_DUNG && (!user.patientId || String(user.patientId) !== String(id))) {
+      throw new ForbiddenException('Bạn chỉ được xem thông tin cá nhân của chính mình');
+    }
     return await firstValueFrom(
-      this.patientClient.send(MSG.PATIENT_GET_BY_ID, { id, user }),
+      this.patientClient.send(MSG.PATIENT_GET_BY_ID, { id }),
     );
   }
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Thêm mới hồ sơ bệnh nhân' })
   async create(@Body() dto: CreatePatientDto) {
     try {
@@ -83,7 +78,7 @@ export class PatientsController {
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Cập nhật hồ sơ bệnh nhân' })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -98,7 +93,7 @@ export class PatientsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.BAC_SI)
   @ApiOperation({ summary: 'Xóa hồ sơ bệnh nhân' })
   async delete(@Param('id', ParseIntPipe) id: number) {
     try {

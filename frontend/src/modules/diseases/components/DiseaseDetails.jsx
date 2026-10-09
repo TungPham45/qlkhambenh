@@ -18,6 +18,7 @@ export function DiseaseDetails({ disease }) {
     ["Mã bệnh", disease.code],
     ["Tên bệnh", disease.name],
     ["Nhóm bệnh", disease.group || "-"],
+    ["Trạng thái", disease.status === "Active" ? "Hoạt động" : "Ngừng hoạt động"],
     ["Ngày tạo", formatDateTime(disease.createdAt)],
     ["Cập nhật gần nhất", formatDateTime(disease.updatedAt)],
   ];

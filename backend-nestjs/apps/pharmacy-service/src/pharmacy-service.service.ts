@@ -2,12 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { Drug, MedicalRecord, Prescription, PrescriptionItem } from '@app/database';
+import { Drug, Prescription, PrescriptionItem } from '@app/database';
 import {
   CreateDrugDto,
   UpdateDrugDto,
@@ -36,23 +35,12 @@ export class PharmacyServiceService {
   async getDrugs(query: any) {
     const page = Math.max(1, parseInt(query?.page) || 1);
     const limit = Math.max(1, parseInt(query?.limit) || 200);
-    const search = String(query?.search || query?.keyword || '').trim();
-    const qb = this.drugRepo
-      .createQueryBuilder('drug')
-      .orderBy('drug.id', 'ASC')
-      .skip((page - 1) * limit)
-      .take(limit);
-    if (search) {
-      const rawDrugId = search.replace(/^TH-/i, '');
-      const exactDrugId = /^\d+$/.test(rawDrugId)
-        ? String(Number(rawDrugId))
-        : rawDrugId;
-      qb.andWhere(
-        '(drug.drugName ILIKE :search OR CAST(drug.id AS TEXT) = :exactDrugId)',
-        { search: `%${search}%`, exactDrugId },
-      );
-    }
-    const [rows, total] = await qb.getManyAndCount();
+
+    const [rows, total] = await this.drugRepo.findAndCount({
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { id: 'ASC' },
+    });
 
     return {
       data: rows.map(this.formatDrug),
@@ -112,12 +100,15 @@ export class PharmacyServiceService {
       .leftJoinAndSelect('pres.patient', 'patient')
       .leftJoinAndSelect('pres.doctor', 'doctor');
 
-    this.applyPrescriptionScope(qb, user);
-
-    if (user?.role === UserRole.ADMIN && query?.MaBN) {
+    if (user?.role === UserRole.NGUOI_DUNG && user?.patientId) {
+      qb.andWhere('pres.patientId = :patientId', { patientId: user.patientId });
+    } else if (query?.MaBN) {
       qb.andWhere('pres.patientId = :patientId', { patientId: query.MaBN });
     }
-    if (user?.role === UserRole.ADMIN && query?.MaBacSi) {
+
+    if (user?.role === UserRole.BAC_SI && user?.staffId) {
+      qb.andWhere('pres.doctorId = :doctorId', { doctorId: user.staffId });
+    } else if (query?.MaBacSi) {
       qb.andWhere('pres.doctorId = :doctorId', { doctorId: query.MaBacSi });
     }
 
@@ -142,16 +133,11 @@ export class PharmacyServiceService {
     };
   }
 
-  async getPrescriptionById(id: number, user: any) {
-    const qb = this.presRepo
-      .createQueryBuilder('pres')
-      .leftJoinAndSelect('pres.items', 'items')
-      .leftJoinAndSelect('items.drug', 'drug')
-      .leftJoinAndSelect('pres.patient', 'patient')
-      .leftJoinAndSelect('pres.doctor', 'doctor')
-      .where('pres.id = :id', { id });
-    this.applyPrescriptionScope(qb, user);
-    const pres = await qb.getOne();
+  async getPrescriptionById(id: number) {
+    const pres = await this.presRepo.findOne({
+      where: { id },
+      relations: ['items', 'items.drug', 'patient', 'doctor'],
+    });
     if (!pres) throw new NotFoundException('Không tìm thấy đơn thuốc');
     return this.formatPrescription(pres);
   }
@@ -165,31 +151,12 @@ export class PharmacyServiceService {
       throw new BadRequestException('Đơn thuốc phải chứa ít nhất một loại thuốc');
     }
 
-    const record = await this.dataSource.getRepository(MedicalRecord).findOne({
-      where: { id: dto.medicalRecordId },
-    });
-    if (!record) {
-      throw new NotFoundException('Không tìm thấy hồ sơ bệnh án tương ứng');
-    }
-    if (
-      user?.role === UserRole.BAC_SI &&
-      Number(record.doctorId) !== Number(user.staffId)
-    ) {
-      throw new ForbiddenException('Bác sĩ chỉ được kê đơn cho hồ sơ mình phụ trách');
-    }
-    if (
-      Number(dto.patientId) !== Number(record.patientId) ||
-      Number(dto.doctorId) !== Number(record.doctorId)
-    ) {
-      throw new BadRequestException('Thông tin bệnh nhân hoặc bác sĩ không khớp hồ sơ bệnh án');
-    }
-
-    const doctorId = record.doctorId;
+    const doctorId = user?.role === UserRole.BAC_SI && user?.staffId ? user.staffId : dto.doctorId;
 
     return await this.dataSource.transaction(async (manager) => {
       const pres = manager.create(Prescription, {
         medicalRecordId: dto.medicalRecordId,
-        patientId: record.patientId,
+        patientId: dto.patientId,
         doctorId,
         prescriptionDate: dto.prescriptionDate || new Date().toISOString().slice(0, 10),
         note: dto.note,
@@ -290,30 +257,6 @@ export class PharmacyServiceService {
       return await this.deductStock(pres.id);
     }
     return false;
-  }
-
-  private applyPrescriptionScope(qb: any, user: any) {
-    if (user?.role === UserRole.ADMIN) return;
-
-    if (user?.role === UserRole.BAC_SI) {
-      const doctorId = Number(user.staffId ?? user.MaNV);
-      if (!Number.isInteger(doctorId) || doctorId <= 0) {
-        throw new ForbiddenException('Tài khoản chưa được liên kết với bác sĩ');
-      }
-      qb.andWhere('pres.doctorId = :scopeDoctorId', { scopeDoctorId: doctorId });
-      return;
-    }
-
-    if (user?.role === UserRole.NGUOI_DUNG) {
-      const patientId = Number(user.patientId ?? user.MaBN);
-      if (!Number.isInteger(patientId) || patientId <= 0) {
-        throw new ForbiddenException('Tài khoản chưa được liên kết với bệnh nhân');
-      }
-      qb.andWhere('pres.patientId = :scopePatientId', { scopePatientId: patientId });
-      return;
-    }
-
-    throw new ForbiddenException('Bạn không có quyền xem đơn thuốc');
   }
 
   private formatDrug(d: Drug) {
